@@ -49,6 +49,7 @@ testOnboardValidator = do
       lastUpdatedAt = now
     lastActiveAt = Some now
     weight = None
+    isOperator = None
 
   -- so v1 is onboarded!
 
@@ -80,6 +81,7 @@ testOnboardValidator = do
       contactPoint = "v1@example2.com"
     lastActiveAt = Some metadataUpdateTime
     weight = None
+    isOperator = None
 
 
   -- activity cannot be reported without advancing time
@@ -101,6 +103,7 @@ testOnboardValidator = do
       contactPoint = "v1@example2.com"
     lastActiveAt = Some now
     weight = None
+    isOperator = None
   pure ()
 
 testSvOnboarding : Script ()
@@ -499,6 +502,7 @@ test_MergeValidatorLicense = do
       lastUpdatedAt = now
     lastActiveAt = Some now
     weight = None
+    isOperator = None
 
   validatorLicense2Cid <- submit dso $ createCmd ValidatorLicense with
     validator = v1
@@ -514,6 +518,7 @@ test_MergeValidatorLicense = do
       lastUpdatedAt = now
     lastActiveAt = Some now
     weight = None
+    isOperator = None
 
   -- there are two validator licenses for v1
   validatorLicenses <- queryFilter @ValidatorLicense dso (\license -> license.validator == v1)

@@ -109,6 +109,7 @@ setupValidator' app name = do
       lastUpdatedAt = now
     lastActiveAt = Some now
     weight = None
+    isOperator = None
 
   userId <- validateUserId name
   -- TODO(#2957): remove read-as DSO party.

@@ -980,6 +980,7 @@ template DsoRules with
           metadata = fmap (\version -> ValidatorLicenseMetadata with version; contactPoint = fromOptional "" contactPoint; lastUpdatedAt = now) version
           lastActiveAt = Some now
           weight = None -- An individual SV can only create a license with the default weight.
+          isOperator = None
         return DsoRules_OnboardValidatorResult with ..
 
     nonconsuming choice DsoRules_MergeValidatorLicense : DsoRules_MergeValidatorLicenseResult
