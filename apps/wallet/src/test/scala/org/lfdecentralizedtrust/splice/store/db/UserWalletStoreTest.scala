@@ -1019,10 +1019,29 @@ abstract class UserWalletStoreTest extends TransferInputStoreTest with HasExecut
     }
   }
 
+
+  "lookupValidatorLicenseWithOffset" should {
+
+    "return correct results" in {
+      val signatories = Seq(dsoParty, validator) // actually, validator is only observer
+      for {
+        store <- mkStore(user1)
+        license1 = validatorLicense(validator, sponsor)
+        _ <- dummyDomain.create(license1, createdEventSignatories = signatories)(
+          store.multiDomainAcsStore
+        )
+        result <- store.lookupValidatorLicenseWithOffset()
+      } yield {
+        result.value.value.contractId should be(license1.contractId)
+      }
+    }
+  }
+
   private lazy val provider1 = providerParty(1)
   private lazy val user1 = userParty(1)
   private lazy val user2 = userParty(2)
   private lazy val validator = mkPartyId(s"validator")
+  private lazy val sponsor = mkPartyId(s"sponsor")
   private lazy val participantId = mkParticipantId("user-1")
   protected def storeKey(endUserParty: PartyId) = UserWalletStore.Key(
     dsoParty = dsoParty,
