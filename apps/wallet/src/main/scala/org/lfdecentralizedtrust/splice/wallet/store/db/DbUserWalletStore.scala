@@ -487,4 +487,32 @@ class DbUserWalletStore(
         ),
       )
     }
+
+  override def lookupValidatorLicenseWithOffset(
+  )(implicit ec: ExecutionContext, tc: TraceContext): Future[
+    QueryResult[Option[Contract[
+      validatorCodegen.ValidatorLicense.ContractId,
+      validatorCodegen.ValidatorLicense]]
+  ]] = waitUntilAcsIngested {
+      for {
+        resultWithOffset <- storage
+          .querySingle(
+            selectFromAcsTableWithOffset(
+              WalletTables.validatorAcsTableName,
+              acsStoreId,
+              domainMigrationId,
+              validatorCodegen.ValidatorLicense.COMPANION,
+              where = sql"""validator_party = ${key.validatorParty}""",
+              orderLimit = sql"limit 1",
+            ).headOption,
+            "lookupValidatorLicenseWithOffset",
+          )
+          .getOrElse(throw offsetExpectedError())
+      } yield QueryResult(
+        resultWithOffset.offset,
+        resultWithOffset.row.map(
+          contractFromRow(validatorCodegen.ValidatorLicense.COMPANION)(_)
+        ),
+      )
+    }
 }
