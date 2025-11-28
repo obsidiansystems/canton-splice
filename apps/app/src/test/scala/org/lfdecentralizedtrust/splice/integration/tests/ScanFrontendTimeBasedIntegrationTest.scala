@@ -17,7 +17,7 @@ import org.lfdecentralizedtrust.splice.config.ConfigTransforms.{
 import org.lfdecentralizedtrust.splice.environment.PackageIdResolver.HasAmuletRules
 import org.lfdecentralizedtrust.splice.integration.EnvironmentDefinition
 import org.lfdecentralizedtrust.splice.util.*
-import org.lfdecentralizedtrust.splice.validator.automation.ReceiveFaucetCouponTrigger
+import org.lfdecentralizedtrust.splice.wallet.automation.ReceiveFaucetCouponTrigger
 import org.openqa.selenium.By
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 
@@ -488,7 +488,11 @@ class ScanFrontendTimeBasedIntegrationTest
       clue("Alice starts claiming Faucet coupons") {
         setTriggersWithin(
           Seq.empty,
-          Seq(aliceValidatorBackend.validatorAutomation.trigger[ReceiveFaucetCouponTrigger]),
+          Seq(aliceValidatorBackend
+              .userWalletAutomation(aliceWalletClient.config.ledgerApiUser)
+              .futureValue
+              .trigger[ReceiveFaucetCouponTrigger]
+          ),
         ) {
           eventually() {
             aliceValidatorWalletClient
