@@ -78,6 +78,13 @@ class ReceiveFaucetCouponTrigger(
   override protected def completeTask(task: ReceiveFaucetCouponTrigger.Task)(implicit
       tc: TraceContext
   ): Future[TaskOutcome] = {
+    logSignificantFaucetStates(task)
+    recordLivenessActivity(task)
+  }
+
+  private def logSignificantFaucetStates(task: ReceiveFaucetCouponTrigger.Task) (implicit
+    tc: TraceContext
+  ): Unit = {
     val ReceiveFaucetCouponTrigger.Task(license, unclaimedRound) = task
     license.payload.faucetState.toScala
       .map(_.lastReceivedFor.number.longValue()) match {
@@ -93,15 +100,14 @@ class ReceiveFaucetCouponTrigger(
               s"This is expected in case of validator inactivity."
           )
     }
+  }
+
+  private def recordLivenessActivity (task: ReceiveFaucetCouponTrigger.Task) (implicit
+      tc: TraceContext
+  ): Future[TaskOutcome] = {
+    val ReceiveFaucetCouponTrigger.Task(license, unclaimedRound) = task
     for {
-      commandPriority <- validatorTopupConfigO match {
-        case None =>
-          Future.successful(CommandPriority.Low) // not the wallet of the validator operator
-        case Some(validatorTopupConfig) =>
-          TopupUtil
-            .hasSufficientFundsForTopup(scanConnection, store, validatorTopupConfig, clock)
-            .map(if (_) CommandPriority.Low else CommandPriority.High): Future[CommandPriority]
-      }
+      commandPriority <- getCommandPriority()
       outcome <- spliceLedgerConnection
         .submit(
           actAs = Seq(endUserParty),
@@ -120,6 +126,19 @@ class ReceiveFaucetCouponTrigger(
           TaskSuccess(s"Received faucet coupon for Round ${unclaimedRound.payload.round.number}")
         )
     } yield outcome
+  }
+
+  private def getCommandPriority () (implicit
+      tc: TraceContext
+  ): Future [CommandPriority] = {
+    validatorTopupConfigO match {
+      case None =>
+        Future.successful(CommandPriority.Low) // not the wallet of the validator operator
+      case Some(validatorTopupConfig) =>
+        TopupUtil
+          .hasSufficientFundsForTopup(scanConnection, store, validatorTopupConfig, clock)
+          .map(if (_) CommandPriority.Low else CommandPriority.High): Future[CommandPriority]
+    }
   }
 
   override protected def isStaleTask(task: ReceiveFaucetCouponTrigger.Task)(implicit
