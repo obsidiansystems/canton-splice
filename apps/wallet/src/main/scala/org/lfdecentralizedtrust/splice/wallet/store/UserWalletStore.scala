@@ -331,6 +331,15 @@ trait UserWalletStore extends TxLogAppStore[TxLogEntry] with TransferInputStore 
     amuletrulesCodegen.TransferPreapproval,
   ]]]]
 
+  def lookupValidatorLicenseWithOffset()(implicit
+      ec: ExecutionContext,
+      tc: TraceContext,
+  ): Future[
+    QueryResult[Option[ContractWithState[
+      validatorCodegen.ValidatorLicense.ContractId,
+      validatorCodegen.ValidatorLicense,
+  ]]]]
+
   /** Lists all the validator rights where the corresponding user is entered as the validator. */
   final def getValidatorRightsWhereUserIsValidator()(implicit
       tc: TraceContext
