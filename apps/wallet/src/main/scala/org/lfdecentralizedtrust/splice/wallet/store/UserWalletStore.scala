@@ -335,7 +335,7 @@ trait UserWalletStore extends TxLogAppStore[TxLogEntry] with TransferInputStore 
       ec: ExecutionContext,
       tc: TraceContext,
   ): Future[
-    QueryResult[Option[Contract[
+    QueryResult[Option[ContractWithState[
       validatorCodegen.ValidatorLicense.ContractId,
       validatorCodegen.ValidatorLicense,
   ]]]]

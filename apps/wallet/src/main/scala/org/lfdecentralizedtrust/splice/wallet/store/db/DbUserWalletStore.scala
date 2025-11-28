@@ -25,7 +25,12 @@ import org.lfdecentralizedtrust.splice.store.db.{
   TxLogQueries,
 }
 import org.lfdecentralizedtrust.splice.store.{Limit, LimitHelpers, PageLimit, TxLogStore}
-import org.lfdecentralizedtrust.splice.util.{Contract, QualifiedName, TemplateJsonDecoder}
+import org.lfdecentralizedtrust.splice.util.{
+  Contract,
+  ContractWithState,
+  QualifiedName,
+  TemplateJsonDecoder,
+}
 import org.lfdecentralizedtrust.splice.wallet.store
 import org.lfdecentralizedtrust.splice.wallet.store.{
   BuyTrafficRequestTxLogEntry,
@@ -490,14 +495,14 @@ class DbUserWalletStore(
 
   override def lookupValidatorLicenseWithOffset(
   )(implicit ec: ExecutionContext, tc: TraceContext): Future[
-    QueryResult[Option[Contract[
+    QueryResult[Option[ContractWithState[
       validatorCodegen.ValidatorLicense.ContractId,
       validatorCodegen.ValidatorLicense]]
   ]] = waitUntilAcsIngested {
       for {
         resultWithOffset <- storage
           .querySingle(
-            selectFromAcsTableWithOffset(
+            selectFromAcsTableWithStateAndOffset(
               WalletTables.validatorAcsTableName,
               acsStoreId,
               domainMigrationId,
@@ -511,7 +516,7 @@ class DbUserWalletStore(
       } yield QueryResult(
         resultWithOffset.offset,
         resultWithOffset.row.map(
-          contractFromRow(validatorCodegen.ValidatorLicense.COMPANION)(_)
+          contractWithStateFromRow(validatorCodegen.ValidatorLicense.COMPANION)(_)
         ),
       )
     }
