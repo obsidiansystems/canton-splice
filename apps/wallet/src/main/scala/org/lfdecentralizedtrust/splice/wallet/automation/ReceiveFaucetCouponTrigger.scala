@@ -79,7 +79,7 @@ class ReceiveFaucetCouponTrigger(
       tc: TraceContext
   ): Future[TaskOutcome] = {
     logSignificantFaucetStates(task)
-    recordLivenessActivity(task)
+    recordLivenessActivityWhenWeightNonZero(task)
   }
 
   private def logSignificantFaucetStates(task: ReceiveFaucetCouponTrigger.Task) (implicit
@@ -99,6 +99,20 @@ class ReceiveFaucetCouponTrigger(
             s"Skipped $skippedCount faucet coupons from last claimed round $lastReceivedFor to current round ${unclaimedRound.payload.round.number}. " +
               s"This is expected in case of validator inactivity."
           )
+    }
+  }
+
+  private def recordLivenessActivityWhenWeightNonZero (task: ReceiveFaucetCouponTrigger.Task) (implicit
+      tc: TraceContext
+  ): Future[TaskOutcome] = {
+    val ReceiveFaucetCouponTrigger.Task(license, unclaimedRound) = task
+    license.payload.weight.toScala match {
+       case Some (x) if x == 0 =>
+          // weight is zero; don't exercise RecordValidatorLivenessActivity
+          Future.successful(TaskSuccess("weight is 0, liveness activity not recorded"))
+       case _ =>
+          // Weight is unspecified or non-zero; exercise RecordValidatorLivenessActivity
+         recordLivenessActivity(task)
     }
   }
 
