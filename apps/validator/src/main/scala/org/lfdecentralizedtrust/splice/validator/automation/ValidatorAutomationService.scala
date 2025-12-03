@@ -164,20 +164,6 @@ class ValidatorAutomationService(
       )
     )
 
-    if (automationConfig.enableAutomaticRewardsCollectionAndAmuletMerging) {
-      registerTrigger(
-        new ReceiveFaucetCouponTrigger(
-          triggerContext,
-          scanConnection,
-          store,
-          walletManager,
-          validatorTopupConfig,
-          connection(SpliceLedgerConnectionPriority.Medium),
-          clock,
-        )
-      )
-    }
-
     if (isSvValidator)
       logger.info(
         s"Not starting TopupMemberTrafficTrigger, as this is an SV validator."

@@ -136,6 +136,16 @@ class UserWalletAutomationService(
         clock,
       )
     )
+    registerTrigger(
+      new ReceiveFaucetCouponTrigger(
+        triggerContext,
+        scanConnection,
+        store,
+        validatorTopupConfigO,
+        connection(SpliceLedgerConnectionPriority.Medium),
+        clock,
+      )
+    )
   }
 
   walletSweep.foreach { config =>
@@ -210,6 +220,7 @@ object UserWalletAutomationService extends AutomationServiceCompanion {
       aTrigger[SubscriptionReadyForPaymentTrigger],
       aTrigger[AcceptedTransferOfferTrigger],
       aTrigger[CompleteBuyTrafficRequestTrigger],
+      aTrigger[ReceiveFaucetCouponTrigger],
       aTrigger[CollectRewardsAndMergeAmuletsTrigger],
       aTrigger[UnassignTrigger.Template[?, ?]],
       aTrigger[AssignTrigger],
