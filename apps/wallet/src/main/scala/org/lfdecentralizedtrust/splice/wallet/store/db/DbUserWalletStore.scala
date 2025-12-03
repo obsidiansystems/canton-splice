@@ -25,7 +25,12 @@ import org.lfdecentralizedtrust.splice.store.db.{
   TxLogQueries,
 }
 import org.lfdecentralizedtrust.splice.store.{Limit, LimitHelpers, PageLimit, TxLogStore}
-import org.lfdecentralizedtrust.splice.util.{Contract, QualifiedName, TemplateJsonDecoder}
+import org.lfdecentralizedtrust.splice.util.{
+  Contract,
+  ContractWithState,
+  QualifiedName,
+  TemplateJsonDecoder,
+}
 import org.lfdecentralizedtrust.splice.wallet.store
 import org.lfdecentralizedtrust.splice.wallet.store.{
   BuyTrafficRequestTxLogEntry,
@@ -484,6 +489,34 @@ class DbUserWalletStore(
         resultWithOffset.offset,
         resultWithOffset.row.map(
           contractFromRow(TransferPreapprovalProposal.COMPANION)(_)
+        ),
+      )
+    }
+
+  override def lookupValidatorLicenseWithOffset(
+  )(implicit ec: ExecutionContext, tc: TraceContext): Future[
+    QueryResult[Option[ContractWithState[
+      validatorCodegen.ValidatorLicense.ContractId,
+      validatorCodegen.ValidatorLicense]]
+  ]] = waitUntilAcsIngested {
+      for {
+        resultWithOffset <- storage
+          .querySingle(
+            selectFromAcsTableWithStateAndOffset(
+              WalletTables.validatorAcsTableName,
+              acsStoreId,
+              domainMigrationId,
+              validatorCodegen.ValidatorLicense.COMPANION,
+              where = sql"""validator_party = ${key.validatorParty}""",
+              orderLimit = sql"limit 1",
+            ).headOption,
+            "lookupValidatorLicenseWithOffset",
+          )
+          .getOrElse(throw offsetExpectedError())
+      } yield QueryResult(
+        resultWithOffset.offset,
+        resultWithOffset.row.map(
+          contractWithStateFromRow(validatorCodegen.ValidatorLicense.COMPANION)(_)
         ),
       )
     }
