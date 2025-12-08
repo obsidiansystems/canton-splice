@@ -488,11 +488,7 @@ class ScanFrontendTimeBasedIntegrationTest
       clue("Alice starts claiming Faucet coupons") {
         setTriggersWithin(
           Seq.empty,
-          Seq(aliceValidatorBackend
-              .userWalletAutomation(aliceWalletClient.config.ledgerApiUser)
-              .futureValue
-              .trigger[ReceiveFaucetCouponTrigger]
-          ),
+          Seq(aliceWalletTrigger[ReceiveFaucetCouponTrigger]),
         ) {
           eventually() {
             aliceValidatorWalletClient

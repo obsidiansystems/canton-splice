@@ -66,7 +66,7 @@ class WalletRewardsTimeBasedIntegrationTest
       }
 
       // avoid messing with the computation of balance
-      bobValidatorBackend.userWalletAutomation(bobWalletClient.config.ledgerApiUser)
+      bobWalletAutomation()
         .futureValue
         .trigger[ReceiveFaucetCouponTrigger]
         .pause()
@@ -153,12 +153,10 @@ class WalletRewardsTimeBasedIntegrationTest
       }
 
       // Pause faucet coupon triggers to avoid balance changes during measurement
-      aliceValidatorBackend.validatorAutomation
-        .trigger[ReceiveFaucetCouponTrigger]
+      aliceWalletTrigger[ReceiveFaucetCouponTrigger]
         .pause()
         .futureValue
-      bobValidatorBackend.validatorAutomation
-        .trigger[ReceiveFaucetCouponTrigger]
+      bobWalletTrigger[ReceiveFaucetCouponTrigger]
         .pause()
         .futureValue
 

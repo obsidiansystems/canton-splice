@@ -118,7 +118,7 @@ class ValidatorLicenseMetadataTimeBasedIntegrationTest
     setTriggersWithin(
       triggersToResumeAtStart = Seq.empty,
       triggersToPauseAtStart = Seq(
-        aliceValidatorBackend.validatorAutomation.trigger[ReceiveFaucetCouponTrigger]
+        aliceWalletTrigger[ReceiveFaucetCouponTrigger]
       ),
     ) {
       actAndCheck(
@@ -192,7 +192,7 @@ class ValidatorLicenseMetadataTimeBasedIntegrationTest
       setTriggersWithin(
         triggersToResumeAtStart = Seq.empty,
         triggersToPauseAtStart = Seq(
-          aliceValidatorBackend.validatorAutomation.trigger[ReceiveFaucetCouponTrigger]
+          aliceWalletTrigger[ReceiveFaucetCouponTrigger]
         ),
       ) {
         actAndCheck(

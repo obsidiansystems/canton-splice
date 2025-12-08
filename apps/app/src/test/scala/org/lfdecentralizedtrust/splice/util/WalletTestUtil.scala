@@ -24,10 +24,13 @@ import org.lfdecentralizedtrust.splice.integration.tests.SpliceTests.{
   SpliceTestConsoleEnvironment,
   TestCommon,
 }
+
+import org.lfdecentralizedtrust.splice.automation.Trigger
 import org.lfdecentralizedtrust.splice.scan.dso.DsoAnsResolver
 import org.lfdecentralizedtrust.splice.store.MultiDomainAcsStore.ContractState
 import org.lfdecentralizedtrust.splice.util.WalletTestUtil.{DynamicUserRefs, StaticUserRefs}
 import org.lfdecentralizedtrust.splice.wallet.admin.api.client.commands.HttpWalletAppClient
+import org.lfdecentralizedtrust.splice.wallet.automation.UserWalletAutomationService
 import org.lfdecentralizedtrust.splice.wallet.store.TxLogEntry
 import com.digitalasset.canton.console.CommandFailure
 import com.digitalasset.canton.data.CantonTimestamp
@@ -40,12 +43,13 @@ import org.scalatest.Assertion
 
 import java.time.Duration
 import java.util.UUID
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.math.BigDecimal.RoundingMode
 import scala.util.control.NonFatal
+import scala.reflect.ClassTag
 
 trait WalletTestUtil extends TestCommon with AnsTestUtil {
   this: CommonAppInstanceReferences =>
@@ -211,6 +215,32 @@ trait WalletTestUtil extends TestCommon with AnsTestUtil {
       status.userOnboarded shouldBe true
       status.userWalletInstalled shouldBe true
     }
+  }
+
+  final def aliceWalletTrigger[T <: Trigger](
+    implicit tag: ClassTag[T],
+    env: SpliceTestConsoleEnvironment): T = {
+     aliceWalletAutomation().futureValue.trigger[T]
+  }
+
+  def aliceWalletAutomation()(implicit
+     env: SpliceTestConsoleEnvironment
+  ): Future[UserWalletAutomationService] = {
+    aliceValidatorBackend
+      .userWalletAutomation(aliceWalletClient.config.ledgerApiUser)
+  }
+
+  final def bobWalletTrigger[T <: Trigger](
+    implicit tag: ClassTag[T],
+    env: SpliceTestConsoleEnvironment): T = {
+     bobWalletAutomation().futureValue.trigger[T]
+  }
+
+  def bobWalletAutomation()(implicit
+     env: SpliceTestConsoleEnvironment
+  ): Future[UserWalletAutomationService] = {
+    bobValidatorBackend
+      .userWalletAutomation(bobWalletClient.config.ledgerApiUser)
   }
 
   def onboardAliceAndBob()(implicit

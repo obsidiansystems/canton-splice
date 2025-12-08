@@ -84,9 +84,7 @@ class WalletAppRewardsTimeBasedIntegrationTest
           },
         )
 
-        aliceValidatorBackend.userWalletAutomation(aliceWalletClient.config.ledgerApiUser)
-          .futureValue
-          .trigger[ReceiveFaucetCouponTrigger]
+        aliceWalletTrigger[ReceiveFaucetCouponTrigger]
           .pause()
           .futureValue
 
@@ -145,10 +143,7 @@ class WalletAppRewardsTimeBasedIntegrationTest
           },
         )
 
-        aliceValidatorBackend.userWalletAutomation(aliceWalletClient.config.ledgerApiUser)
-          .futureValue
-          .trigger[ReceiveFaucetCouponTrigger]
-          .resume()
+        aliceWalletTrigger[ReceiveFaucetCouponTrigger].resume()
       }
 
       transferAndCheckRewards((202.9, 203))
