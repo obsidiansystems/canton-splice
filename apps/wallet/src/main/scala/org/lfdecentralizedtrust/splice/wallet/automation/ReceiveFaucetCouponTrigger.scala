@@ -1,12 +1,12 @@
 // Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-package org.lfdecentralizedtrust.splice.validator.automation
+package org.lfdecentralizedtrust.splice.wallet.automation
 
 import cats.data.OptionT
 import com.digitalasset.canton.logging.pretty.{Pretty, PrettyPrinting}
-import com.digitalasset.canton.time.Clock
 import com.digitalasset.canton.tracing.TraceContext
+import com.digitalasset.canton.topology.PartyId
 import io.opentelemetry.api.trace.Tracer
 import org.apache.pekko.stream.Materializer
 import org.lfdecentralizedtrust.splice.automation.RoundBasedRewardTrigger.RoundBasedTask
@@ -18,13 +18,13 @@ import org.lfdecentralizedtrust.splice.automation.{
 }
 import org.lfdecentralizedtrust.splice.codegen.java.splice.round.OpenMiningRound
 import org.lfdecentralizedtrust.splice.codegen.java.splice.validatorlicense.ValidatorLicense
-import org.lfdecentralizedtrust.splice.environment.{CommandPriority, SpliceLedgerConnection}
+import org.lfdecentralizedtrust.splice.environment.SpliceLedgerConnection
 import org.lfdecentralizedtrust.splice.scan.admin.api.client.BftScanConnection
 import org.lfdecentralizedtrust.splice.util.{AssignedContract, ContractWithState}
-import org.lfdecentralizedtrust.splice.validator.store.ValidatorStore
-import org.lfdecentralizedtrust.splice.validator.util.ValidatorUtil
-import org.lfdecentralizedtrust.splice.wallet.UserWalletManager
-import org.lfdecentralizedtrust.splice.wallet.util.{TopupUtil, ValidatorTopupConfig}
+import org.lfdecentralizedtrust.splice.wallet.store.{
+   FetchCommandPriority,
+   ValidatorLicenseStore,
+}
 
 import java.time.temporal.ChronoUnit
 import java.time.Instant
@@ -35,18 +35,15 @@ import scala.math.Ordering.Implicits.*
 class ReceiveFaucetCouponTrigger(
     override protected val context: TriggerContext,
     scanConnection: BftScanConnection,
-    validatorStore: ValidatorStore,
-    userWalletManager: UserWalletManager,
-    validatorTopupConfig: ValidatorTopupConfig,
+    licenseStore: ValidatorLicenseStore,
     spliceLedgerConnection: SpliceLedgerConnection,
-    clock: Clock,
+    licensedParty: PartyId,
+    priorityFetcher: FetchCommandPriority,
 )(implicit
     override val ec: ExecutionContext,
     override val tracer: Tracer,
     materializer: Materializer,
 ) extends RoundBasedRewardTrigger[ReceiveFaucetCouponTrigger.Task] {
-
-  private val validatorParty = validatorStore.key.validatorParty
 
   override protected def retrieveAvailableTasksForRound()(implicit
       tc: TraceContext
@@ -59,7 +56,7 @@ class ReceiveFaucetCouponTrigger(
     for {
       // The ValidatorLicense is guaranteed to exist, but might take a while during init.
       license <- OptionT(
-        validatorStore
+        licenseStore
           .lookupValidatorLicenseWithOffset()
           .map(_.value.flatMap(_.toAssignedContract))
       )
@@ -110,19 +107,11 @@ class ReceiveFaucetCouponTrigger(
           )
     }
     for {
-      validatorWallet <- ValidatorUtil.getValidatorWallet(validatorStore, userWalletManager)
-      commandPriority <- TopupUtil
-        .hasSufficientFundsForTopup(
-          scanConnection,
-          validatorWallet.store,
-          validatorTopupConfig,
-          clock,
-        )
-        .map(if (_) CommandPriority.Low else CommandPriority.High): Future[CommandPriority]
+      commandPriority <- priorityFetcher.getCommandPriority()
       outcome <- spliceLedgerConnection
         .submit(
-          actAs = Seq(validatorParty),
-          readAs = Seq(validatorParty),
+          actAs = Seq(licensedParty),
+          readAs = Seq(licensedParty),
           license.exercise(
             _.exerciseValidatorLicense_RecordValidatorLivenessActivity(
               unclaimedRound.contractId
