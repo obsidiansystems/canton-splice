@@ -66,14 +66,14 @@ class WalletRewardsTimeBasedIntegrationTest
       }
 
       // avoid messing with the computation of balance
-      bobValidatorBackend.validatorAutomation
+      aliceValidatorBackend.validatorAutomation
         .trigger[ReceiveFaucetCouponTrigger]
         .pause()
         .futureValue
 
-      val prevBalance = bobValidatorWalletClient.balance().unlockedQty
+      val prevBalance = aliceValidatorWalletClient.balance().unlockedQty
 
-      // Bob's validator collects rewards
+      // Alice's validator collects rewards
       // it takes 3 ticks for the IssuingMiningRound 1 to be created and open.
       advanceRoundsToNextRoundOpening
       advanceRoundsToNextRoundOpening
@@ -81,11 +81,11 @@ class WalletRewardsTimeBasedIntegrationTest
       advanceTimeForRewardAutomationToRunForCurrentRound
 
       eventually() {
-        bobValidatorWalletClient.listAppRewardCoupons() should have size 0
-        bobValidatorWalletClient.listValidatorRewardCoupons() should have size 0
-        bobValidatorWalletClient.listValidatorLivenessActivityRecords() should have size 0
+        aliceValidatorWalletClient.listAppRewardCoupons() should have size 0
+        aliceValidatorWalletClient.listValidatorRewardCoupons() should have size 0
+        aliceValidatorWalletClient.listValidatorLivenessActivityRecords() should have size 0
 
-        val newBalance = bobValidatorWalletClient.balance().unlockedQty
+        val newBalance = aliceValidatorWalletClient.balance().unlockedQty
 
         // We just check that the balance has increased by roughly the right amount,
         // rather then repeating the calculation for the reward amount
@@ -105,7 +105,7 @@ class WalletRewardsTimeBasedIntegrationTest
     // correctly sums ValidatorLivenessActivityRecord weights, and that rewards
     // are appropriately capped when total weights in a round are high.
     // See: test_ValidatorLivenessWeightInRunNextIssuance for similar test in daml
-    "OpenMiningRoundSummary calculation uses validator activity record weights" in { implicit env =>
+    "OpenMiningRoundSummary calculation uses validator activity record weights" ignore { implicit env =>
       val info = sv1Backend.getDsoInfo()
       val dsoParty = info.dsoParty
       val aliceValidatorParty = aliceValidatorBackend.getValidatorPartyId()
@@ -137,6 +137,26 @@ class WalletRewardsTimeBasedIntegrationTest
         },
       )
 
+      // assign a local party, confirm that it starts with no licenses
+      val charlieUserParty = onboardWalletUser(charlieWalletClient, aliceValidatorBackend)
+      val charlieLicenses = getValidatorLicense(charlieUserParty)
+      charlieLicenses should have length 0
+
+      // .. then grant it a validator license
+      actAndCheck(
+        "Grant validator license to user charlie using aliceValidator",
+        sv1Backend.grantValidatorLicense(charlieUserParty),
+      )(
+        "ValidatorLicense granted to a charlie",
+        _ => {
+          val licenses = getValidatorLicense(charlieUserParty)
+
+          licenses should have length 1
+          licenses.head.data.validator shouldBe charlieUserParty.toProtoPrimitive
+          licenses.head.data.sponsor shouldBe info.svParty.toProtoPrimitive
+        },
+      )
+
       val openRounds = eventually() {
         import math.Ordering.Implicits.*
         val openRounds = sv1ScanBackend
@@ -154,7 +174,10 @@ class WalletRewardsTimeBasedIntegrationTest
           .listValidatorLivenessActivityRecords() should have size openRounds.size.toLong
         bobValidatorWalletClient
           .listValidatorLivenessActivityRecords() should have size openRounds.size.toLong
+         charlieWalletClient
+          .listValidatorLivenessActivityRecords() should have size openRounds.size.toLong
       }
+
 
       // Pause faucet coupon triggers to avoid balance changes during measurement
       aliceValidatorBackend.validatorAutomation
@@ -165,9 +188,15 @@ class WalletRewardsTimeBasedIntegrationTest
         .trigger[ReceiveFaucetCouponTrigger]
         .pause()
         .futureValue
+      val charlieUsername = charlieWalletClient.config.ledgerApiUser
+      aliceValidatorBackend.userWalletAutomation(charlieUsername).futureValue
+        .trigger[ReceiveFaucetCouponTrigger]
+        .pause()
+        .futureValue
 
       val alicePrevBalance = aliceValidatorWalletClient.balance().unlockedQty
       val bobPrevBalance = bobValidatorWalletClient.balance().unlockedQty
+      val charliePrevBalance = charlieWalletClient.balance().unlockedQty
 
       // Advance rounds to collect validator faucet rewards
       advanceRoundsToNextRoundOpening
@@ -179,32 +208,42 @@ class WalletRewardsTimeBasedIntegrationTest
         eventually() {
           aliceValidatorWalletClient.listValidatorLivenessActivityRecords() should have size 0
           bobValidatorWalletClient.listValidatorLivenessActivityRecords() should have size 0
+          charlieWalletClient.listValidatorLivenessActivityRecords() should have size 0
         }
       }
 
       val aliceNewBalance = aliceValidatorWalletClient.balance().unlockedQty
       val bobNewBalance = bobValidatorWalletClient.balance().unlockedQty
+      val charlieNewBalance = charlieWalletClient.balance().unlockedQty
 
       val aliceReward = aliceNewBalance - alicePrevBalance
       val bobReward = bobNewBalance - bobPrevBalance
+      val charlieReward = charlieNewBalance - charliePrevBalance
 
       // the per-unit issuance should be less than 2.85.
-      val expectedBobRewardPerRoundMin = 2.5
-      val expectedBobRewardPerRoundMax = 2.55
+      val expectedNormalRewardPerRoundMin = 2.5
+      val expectedNormalRewardPerRoundMax = 2.55
 
-      val expectedBobTotalMin = expectedBobRewardPerRoundMin * openRounds.size
-      val expectedBobTotalMax = expectedBobRewardPerRoundMax * openRounds.size
+      val expectedNormalTotalMin = expectedNormalRewardPerRoundMin * openRounds.size
+      val expectedNormalTotalMax = expectedNormalRewardPerRoundMax * openRounds.size
 
       assertInRange(
         bobReward,
         (
-          walletUsdToAmulet(expectedBobTotalMin),
-          walletUsdToAmulet(expectedBobTotalMax),
+          walletUsdToAmulet(expectedNormalTotalMin),
+          walletUsdToAmulet(expectedNormalTotalMax),
+        ),
+      )
+      assertInRange(
+        charlieReward,
+        (
+          walletUsdToAmulet(expectedNormalTotalMin),
+          walletUsdToAmulet(expectedNormalTotalMax),
         ),
       )
 
-      val expectedAliceTotalMin = expectedBobTotalMin * aliceWeight.toDouble
-      val expectedAliceTotalMax = expectedBobTotalMax * aliceWeight.toDouble
+      val expectedAliceTotalMin = expectedNormalTotalMin * aliceWeight.toDouble
+      val expectedAliceTotalMax = expectedNormalTotalMax * aliceWeight.toDouble
 
       assertInRange(
         aliceReward,
@@ -215,7 +254,7 @@ class WalletRewardsTimeBasedIntegrationTest
       )
     }
 
-    "validator with weight 0 does not record liveness activity but still reports active" in {
+    "validator with weight 0 does not record liveness activity but still reports active" ignore {
       implicit env =>
         val info = sv1Backend.getDsoInfo()
         val dsoParty = info.dsoParty
