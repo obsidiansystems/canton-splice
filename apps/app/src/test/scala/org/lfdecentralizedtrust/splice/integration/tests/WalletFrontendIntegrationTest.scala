@@ -212,6 +212,15 @@ class WalletFrontendIntegrationTest
 
       "allow delegate to accept and reject minting delegation proposals and withdraw delegations" in {
         implicit env =>
+          def checkRowCounts(proposalCount: Long, activeCount: Long) (
+            implicit webDriver : WebDriver
+          ): Unit = {
+            val proposalRows = findAll(className("proposal-row")).toSeq
+            proposalRows should have size proposalCount
+            val delegationRows = findAll(className("delegation-row")).toSeq
+            delegationRows should have size activeCount
+          }
+
           // 1. Setup - Alice is the delegate (wallet user), external party is the beneficiary
           val aliceDamlUser = aliceWalletClient.config.ledgerApiUser
           val aliceParty = onboardWalletUser(aliceWalletClient, aliceValidatorBackend)
@@ -302,10 +311,7 @@ class WalletFrontendIntegrationTest
               "2 proposals remain, 1 delegation created",
               _ => {
                 eventually() {
-                  val proposalRows = findAll(className("proposal-row")).toSeq
-                  proposalRows should have size 2
-                  val delegationRows = findAll(className("delegation-row")).toSeq
-                  delegationRows should have size 1
+                  checkRowCounts(2, 1)
                 }
               },
             )
@@ -321,10 +327,7 @@ class WalletFrontendIntegrationTest
               "1 proposal remains, 2 delegations exist",
               _ => {
                 eventually() {
-                  val proposalRows = findAll(className("proposal-row")).toSeq
-                  proposalRows should have size 1
-                  val delegationRows = findAll(className("delegation-row")).toSeq
-                  delegationRows should have size 2
+                  checkRowCounts(1, 2)
                 }
               },
             )
@@ -340,10 +343,7 @@ class WalletFrontendIntegrationTest
               "1 proposal remains, 1 delegation remains",
               _ => {
                 eventually() {
-                  val proposalRows = findAll(className("proposal-row")).toSeq
-                  proposalRows should have size 1
-                  val delegationRows = findAll(className("delegation-row")).toSeq
-                  delegationRows should have size 1
+                  checkRowCounts(1, 1)
                 }
               },
             )
@@ -360,8 +360,7 @@ class WalletFrontendIntegrationTest
               _ => {
                 eventually() {
                   find(id("no-proposals-message")).valueOrFail("No proposals message not found!")
-                  val delegationRows = findAll(className("delegation-row")).toSeq
-                  delegationRows should have size 1
+                  checkRowCounts(0, 1)
                 }
               },
             )
