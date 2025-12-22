@@ -200,6 +200,64 @@ class WalletFrontendIntegrationTest
 
     }
 
+    "delegations" should {
+
+      "show the delegations page with proposal and delegation rows" in { implicit env =>
+        val aliceDamlUser = aliceWalletClient.config.ledgerApiUser
+        onboardWalletUser(aliceWalletClient, aliceValidatorBackend)
+
+        withFrontEnd("alice") { implicit webDriver =>
+          actAndCheck(
+            "Alice browses to the wallet", {
+              browseToAliceWallet(aliceDamlUser)
+            },
+          )(
+            "Alice sees the Delegations tab",
+            _ => {
+              waitForQuery(id("navlink-delegations"))
+            },
+          )
+
+          actAndCheck(
+            "Alice clicks on Delegations tab", {
+              eventuallyClickOn(id("navlink-delegations"))
+            },
+          )(
+            "Alice sees the Proposed and Delegations tables with rows and action buttons",
+            _ => {
+              // Verify Proposed section
+              find(id("proposals-label")).valueOrFail("Proposed heading not found!")
+
+              val proposalRows = findAll(className("proposal-row")).toSeq
+              proposalRows should have size 1
+
+              proposalRows.foreach { row =>
+                row
+                  .findChildElement(className("proposal-accept"))
+                  .valueOrFail("Accept button not found in proposal row!")
+              }
+
+              // Verify Delegations section
+              find(id("delegations-label")).valueOrFail("Delegations heading not found!")
+
+              val delegationRows = findAll(className("delegation-row")).toSeq
+              delegationRows should have size 2
+
+              val rowIds = delegationRows.map(_.attribute("id").valueOrFail("Row should have id"))
+              rowIds.distinct should have size 2
+
+              delegationRows.foreach { row =>
+                row
+                  .findChildElement(className("delegation-withdraw"))
+                  .valueOrFail("Withdraw button not found in delegation row!")
+              }
+            },
+          )
+        }
+      }
+
+    }
+
     "show logged in ANS name" in { implicit env =>
       // Create directory entry for alice
       val aliceDamlUser = aliceWalletClient.config.ledgerApiUser
