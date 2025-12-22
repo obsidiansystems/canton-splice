@@ -251,16 +251,18 @@ class WalletFrontendIntegrationTest
 
           // 3. Create three proposals, one from each beneficiary
           val expiresAt = env.environment.clock.now.plus(Duration.ofDays(30)).toInstant
-          createMintingDelegationProposal(beneficiary1Onboarding, aliceParty, expiresAt)
-          createMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresAt)
-          createMintingDelegationProposal(beneficiary3Onboarding, aliceParty, expiresAt)
-
-          // Verify proposals exist via API
-          clue("Check that all three proposals are listed") {
-            eventually() {
+          actAndCheck(
+            "Each beneficiary creates a minting delegation proposal", {
+              createMintingDelegationProposal(beneficiary1Onboarding, aliceParty, expiresAt)
+              createMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresAt)
+              createMintingDelegationProposal(beneficiary3Onboarding, aliceParty, expiresAt)
+            },
+          )(
+            "and they are successfully created",
+            _ => {
               aliceWalletClient.listMintingDelegationProposals().proposals should have size 3
-            }
-          }
+            },
+          )
 
           // 4. Test via Selenium UI
           withFrontEnd("alice") { implicit webDriver =>
@@ -299,7 +301,6 @@ class WalletFrontendIntegrationTest
                 find(id("no-delegations-message")).valueOrFail("No delegations message not found!")
               },
             )
-
             screenshotWithName("01-delegations-after-setup")
 
             // 5. Accept first proposal via UI
@@ -315,7 +316,6 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-
             screenshotWithName("02-delegations-accept-proposal")
 
             // 6. Accept second proposal via UI
@@ -331,7 +331,6 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-
             screenshotWithName("03-delegations-accept-again")
 
             // 7. Withdraw one delegation via UI
@@ -347,7 +346,6 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-
             screenshotWithName("04-delegations-withdraw-delegation")
 
             // 8. Reject the final proposal via UI
@@ -364,7 +362,6 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-
             screenshotWithName("05-delegations-reject-proposal")
 
             // 9. Add another proposal, refresh the UI and confirm that it appears
@@ -383,7 +380,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-            screenshotWithName("06-new-proposal-appears")
+            screenshotWithName("06-delegations-new-proposal-appears")
 
           }
       }
