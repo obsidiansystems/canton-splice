@@ -13,6 +13,8 @@ import com.digitalasset.canton.topology.PartyId
 
 import java.time.Duration
 import scala.jdk.CollectionConverters.*
+import org.openqa.selenium.WebDriver
+
 
 class WalletFrontendIntegrationTest
     extends FrontendIntegrationTestWithSharedEnvironment("alice")
@@ -294,8 +296,7 @@ class WalletFrontendIntegrationTest
             // 5. Accept first proposal via UI
             actAndCheck(
               "Alice clicks Accept on the first proposal", {
-                val proposalRows = findAll(className("proposal-row")).toSeq
-                click on proposalRows.head.childElement(className("proposal-accept"))
+                clickByCssSelector(".proposal-row .proposal-accept")
               },
             )(
               "2 proposals remain, 1 delegation created",
@@ -314,8 +315,7 @@ class WalletFrontendIntegrationTest
             // 6. Accept second proposal via UI
             actAndCheck(
               "Alice clicks Accept on the second proposal", {
-                val proposalRows = findAll(className("proposal-row")).toSeq
-                click on proposalRows.head.childElement(className("proposal-accept"))
+                clickByCssSelector(".proposal-row .proposal-accept")
               },
             )(
               "1 proposal remains, 2 delegations exist",
@@ -334,8 +334,7 @@ class WalletFrontendIntegrationTest
             // 7. Withdraw one delegation via UI
             actAndCheck(
               "Alice clicks Withdraw on the first delegation", {
-                val delegationRows = findAll(className("delegation-row")).toSeq
-                click on delegationRows.head.childElement(className("delegation-withdraw"))
+                clickByCssSelector(".delegation-row .delegation-withdraw")
               },
             )(
               "1 proposal remains, 1 delegation remains",
@@ -354,8 +353,7 @@ class WalletFrontendIntegrationTest
             // 8. Reject the final proposal via UI
             actAndCheck(
               "Alice clicks Reject on the final proposal", {
-                val proposalRows = findAll(className("proposal-row")).toSeq
-                click on proposalRows.head.childElement(className("proposal-reject"))
+                clickByCssSelector(".proposal-row .proposal-reject")
               },
             )(
               "No proposals remain, 1 delegation remains",
