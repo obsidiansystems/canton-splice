@@ -289,6 +289,8 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("01-delegations-after-setup")
+
             // 5. Accept first proposal via UI
             actAndCheck(
               "Alice clicks Accept on the first proposal", {
@@ -306,6 +308,8 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
+
+            screenshotWithName("02-delegations-accept-proposal")
 
             // 6. Accept second proposal via UI
             actAndCheck(
@@ -325,6 +329,8 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("03-delegations-accept-again")
+
             // 7. Withdraw one delegation via UI
             actAndCheck(
               "Alice clicks Withdraw on the first delegation", {
@@ -343,6 +349,8 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("04-delegations-withdraw-delegation")
+
             // 8. Reject the final proposal via UI
             actAndCheck(
               "Alice clicks Reject on the final proposal", {
@@ -359,6 +367,8 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
+
+            screenshotWithName("05-delegations-reject-proposal")
           }
       }
 
