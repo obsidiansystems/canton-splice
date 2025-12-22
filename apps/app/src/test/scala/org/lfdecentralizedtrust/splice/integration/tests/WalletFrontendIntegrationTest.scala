@@ -1,5 +1,6 @@
 package org.lfdecentralizedtrust.splice.integration.tests
 
+import org.lfdecentralizedtrust.splice.codegen.java.splice.wallet.mintingdelegation as mintingDelegationCodegen
 import org.lfdecentralizedtrust.splice.integration.EnvironmentDefinition
 import org.lfdecentralizedtrust.splice.integration.tests.SpliceTests.SpliceTestConsoleEnvironment
 import org.lfdecentralizedtrust.splice.util.{
@@ -8,12 +9,17 @@ import org.lfdecentralizedtrust.splice.util.{
   WalletFrontendTestUtil,
   WalletTestUtil,
 }
+import com.digitalasset.canton.topology.PartyId
+
+import java.time.Duration
+import scala.jdk.CollectionConverters.*
 
 class WalletFrontendIntegrationTest
     extends FrontendIntegrationTestWithSharedEnvironment("alice")
     with WalletTestUtil
     with WalletFrontendTestUtil
-    with FrontendLoginUtil {
+    with FrontendLoginUtil
+    with ExternallySignedPartyTestUtil {
 
   val amuletPrice = 2
   override def walletAmuletPrice = SpliceUtil.damlDecimal(amuletPrice.toDouble)
@@ -202,58 +208,158 @@ class WalletFrontendIntegrationTest
 
     "delegations" should {
 
-      "show the delegations page with proposal and delegation rows" in { implicit env =>
-        val aliceDamlUser = aliceWalletClient.config.ledgerApiUser
-        onboardWalletUser(aliceWalletClient, aliceValidatorBackend)
+      "allow delegate to accept and reject minting delegation proposals and withdraw delegations" in {
+        implicit env =>
+          // 1. Setup - Alice is the delegate (wallet user), external party is the beneficiary
+          val aliceDamlUser = aliceWalletClient.config.ledgerApiUser
+          val aliceParty = onboardWalletUser(aliceWalletClient, aliceValidatorBackend)
 
-        withFrontEnd("alice") { implicit webDriver =>
-          actAndCheck(
-            "Alice browses to the wallet", {
-              browseToAliceWallet(aliceDamlUser)
-            },
-          )(
-            "Alice sees the Delegations tab",
-            _ => {
-              waitForQuery(id("navlink-delegations"))
-            },
-          )
+          // Tap to fund the validator wallet for external party setup
+          aliceValidatorWalletClient.tap(100.0)
 
-          actAndCheck(
-            "Alice clicks on Delegations tab", {
-              eventuallyClickOn(id("navlink-delegations"))
-            },
-          )(
-            "Alice sees the Proposed and Delegations tables with rows and action buttons",
-            _ => {
-              // Verify Proposed section
-              find(id("proposals-label")).valueOrFail("Proposed heading not found!")
+          // Onboard three external parties as beneficiaries
+          val beneficiary1Onboarding =
+            onboardExternalParty(aliceValidatorBackend, Some("beneficiary1"))
+          createAndAcceptExternalPartySetupProposal(aliceValidatorBackend, beneficiary1Onboarding)
 
-              val proposalRows = findAll(className("proposal-row")).toSeq
-              proposalRows should have size 1
+          val beneficiary2Onboarding =
+            onboardExternalParty(aliceValidatorBackend, Some("beneficiary2"))
+          createAndAcceptExternalPartySetupProposal(aliceValidatorBackend, beneficiary2Onboarding)
 
-              proposalRows.foreach { row =>
-                row
-                  .findChildElement(className("proposal-accept"))
-                  .valueOrFail("Accept button not found in proposal row!")
-              }
+          val beneficiary3Onboarding =
+            onboardExternalParty(aliceValidatorBackend, Some("beneficiary3"))
+          createAndAcceptExternalPartySetupProposal(aliceValidatorBackend, beneficiary3Onboarding)
 
-              // Verify Delegations section
-              find(id("delegations-label")).valueOrFail("Delegations heading not found!")
+          // 2. Verify empty initial state via API
+          clue("Check that no minting delegation proposals exist initially") {
+            aliceWalletClient.listMintingDelegationProposals().proposals shouldBe empty
+          }
+          clue("Check that no minting delegations exist initially") {
+            aliceWalletClient.listMintingDelegations().delegations shouldBe empty
+          }
 
-              val delegationRows = findAll(className("delegation-row")).toSeq
-              delegationRows should have size 2
+          // 3. Create three proposals, one from each beneficiary
+          val expiresAt = env.environment.clock.now.plus(Duration.ofDays(30)).toInstant
+          createMintingDelegationProposal(beneficiary1Onboarding, aliceParty, expiresAt)
+          createMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresAt)
+          createMintingDelegationProposal(beneficiary3Onboarding, aliceParty, expiresAt)
 
-              val rowIds = delegationRows.map(_.attribute("id").valueOrFail("Row should have id"))
-              rowIds.distinct should have size 2
+          // Verify proposals exist via API
+          clue("Check that all three proposals are listed") {
+            eventually() {
+              aliceWalletClient.listMintingDelegationProposals().proposals should have size 3
+            }
+          }
 
-              delegationRows.foreach { row =>
-                row
-                  .findChildElement(className("delegation-withdraw"))
-                  .valueOrFail("Withdraw button not found in delegation row!")
-              }
-            },
-          )
-        }
+          // 4. Test via Selenium UI
+          withFrontEnd("alice") { implicit webDriver =>
+            actAndCheck(
+              "Alice browses to the wallet", {
+                browseToAliceWallet(aliceDamlUser)
+              },
+            )(
+              "Alice sees the Delegations tab",
+              _ => {
+                waitForQuery(id("navlink-delegations"))
+              },
+            )
+
+            actAndCheck(
+              "Alice clicks on Delegations tab", {
+                eventuallyClickOn(id("navlink-delegations"))
+              },
+            )(
+              "Alice sees the Proposed table with 3 proposals and empty Delegations table",
+              _ => {
+                find(id("proposals-label")).valueOrFail("Proposed heading not found!")
+                val proposalRows = findAll(className("proposal-row")).toSeq
+                proposalRows should have size 3
+
+                proposalRows.foreach { row =>
+                  row
+                    .findChildElement(className("proposal-accept"))
+                    .valueOrFail("Accept button not found in proposal row!")
+                  row
+                    .findChildElement(className("proposal-reject"))
+                    .valueOrFail("Reject button not found in proposal row!")
+                }
+
+                find(id("delegations-label")).valueOrFail("Delegations heading not found!")
+                find(id("no-delegations-message")).valueOrFail("No delegations message not found!")
+              },
+            )
+
+            // 5. Accept first proposal via UI
+            actAndCheck(
+              "Alice clicks Accept on the first proposal", {
+                val proposalRows = findAll(className("proposal-row")).toSeq
+                click on proposalRows.head.childElement(className("proposal-accept"))
+              },
+            )(
+              "2 proposals remain, 1 delegation created",
+              _ => {
+                eventually() {
+                  val proposalRows = findAll(className("proposal-row")).toSeq
+                  proposalRows should have size 2
+                  val delegationRows = findAll(className("delegation-row")).toSeq
+                  delegationRows should have size 1
+                }
+              },
+            )
+
+            // 6. Accept second proposal via UI
+            actAndCheck(
+              "Alice clicks Accept on the second proposal", {
+                val proposalRows = findAll(className("proposal-row")).toSeq
+                click on proposalRows.head.childElement(className("proposal-accept"))
+              },
+            )(
+              "1 proposal remains, 2 delegations exist",
+              _ => {
+                eventually() {
+                  val proposalRows = findAll(className("proposal-row")).toSeq
+                  proposalRows should have size 1
+                  val delegationRows = findAll(className("delegation-row")).toSeq
+                  delegationRows should have size 2
+                }
+              },
+            )
+
+            // 7. Withdraw one delegation via UI
+            actAndCheck(
+              "Alice clicks Withdraw on the first delegation", {
+                val delegationRows = findAll(className("delegation-row")).toSeq
+                click on delegationRows.head.childElement(className("delegation-withdraw"))
+              },
+            )(
+              "1 proposal remains, 1 delegation remains",
+              _ => {
+                eventually() {
+                  val proposalRows = findAll(className("proposal-row")).toSeq
+                  proposalRows should have size 1
+                  val delegationRows = findAll(className("delegation-row")).toSeq
+                  delegationRows should have size 1
+                }
+              },
+            )
+
+            // 8. Reject the final proposal via UI
+            actAndCheck(
+              "Alice clicks Reject on the final proposal", {
+                val proposalRows = findAll(className("proposal-row")).toSeq
+                click on proposalRows.head.childElement(className("proposal-reject"))
+              },
+            )(
+              "No proposals remain, 1 delegation remains",
+              _ => {
+                eventually() {
+                  find(id("no-proposals-message")).valueOrFail("No proposals message not found!")
+                  val delegationRows = findAll(className("delegation-row")).toSeq
+                  delegationRows should have size 1
+                }
+              },
+            )
+          }
       }
 
     }
@@ -298,5 +404,28 @@ class WalletFrontendIntegrationTest
       }
     }
 
+  }
+
+  private def createMintingDelegationProposal(
+      beneficiaryOnboarding: OnboardingResult,
+      delegate: PartyId,
+      expiresAt: java.time.Instant,
+  )(implicit env: SpliceTestConsoleEnvironment): Unit = {
+    val beneficiary = beneficiaryOnboarding.party
+    val proposal = new mintingDelegationCodegen.MintingDelegationProposal(
+      new mintingDelegationCodegen.MintingDelegation(
+        beneficiary.toProtoPrimitive,
+        delegate.toProtoPrimitive,
+        dsoParty.toProtoPrimitive,
+        expiresAt,
+        10, // amuletMergeLimit
+      )
+    )
+    // Use externally signed submission for the external party
+    aliceValidatorBackend.participantClientWithAdminToken.ledger_api_extensions.commands
+      .submitJavaExternalOrLocal(
+        actingParty = beneficiaryOnboarding.richPartyId,
+        commands = proposal.create.commands.asScala.toSeq,
+      )
   }
 }
