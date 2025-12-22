@@ -366,6 +366,25 @@ class WalletFrontendIntegrationTest
             )
 
             screenshotWithName("05-delegations-reject-proposal")
+
+            // 9. Add another proposal, refresh the UI and confirm that it appears
+            actAndCheck(
+              "Beneficiary 3 creates new minting proposal and UI refreshes", {
+                createMintingDelegationProposal(beneficiary3Onboarding, aliceParty, expiresAt)
+                webDriver.navigate().refresh()
+              },
+            )(
+              "1 new proposal appears, 1 delegation remains",
+
+              _ => {
+                eventually() {
+                  aliceWalletClient.listMintingDelegationProposals().proposals should have size 1
+                  checkRowCounts(1, 1)
+                }
+              },
+            )
+            screenshotWithName("06-new-proposal-appears")
+
           }
       }
 
