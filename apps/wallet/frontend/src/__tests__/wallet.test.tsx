@@ -622,6 +622,71 @@ describe('Wallet user can', () => {
     expect(screen.queryByRole('table', { name: 'delegations table' })).toBeNull();
   });
 
+  test('can withdraw a minting delegation', async () => {
+    server.use(featureSupportHandler(true, true));
+
+    // Track the withdraw API call
+    const calledWithdrawArgs: string[] = [];
+    server.use(
+      rest.post(`${walletUrl}/v0/wallet/minting-delegations/:cid/reject`, (req, res, ctx) => {
+        calledWithdrawArgs.push(req.params.cid.toString());
+        return res(ctx.status(200));
+      })
+    );
+
+    const user = userEvent.setup();
+    render(
+      <WalletConfigProvider>
+        <App />
+      </WalletConfigProvider>
+    );
+
+    // Navigate to delegations tab
+    const delegationsLink = await screen.findByRole('link', { name: 'Delegations' });
+    await user.click(delegationsLink);
+
+    // Find and click the first Withdraw button
+    const withdrawButtons = await screen.findAllByRole('button', { name: 'Withdraw' });
+    expect(withdrawButtons.length).toBe(mockMintingDelegations.length);
+
+    await user.click(withdrawButtons[0]);
+
+    // Assert the withdraw API was called once
+    expect(calledWithdrawArgs).toHaveLength(1);
+  });
+
+  test.each([
+    { action: 'accept', buttonName: 'Accept' },
+    { action: 'reject', buttonName: 'Reject' },
+  ])('can $action a minting delegation proposal', async ({ action, buttonName }) => {
+    server.use(featureSupportHandler(true, true));
+
+    const calledArgs: string[] = [];
+    server.use(
+      rest.post(`${walletUrl}/v0/wallet/minting-delegation-proposals/:cid/${action}`, (req, res, ctx) => {
+        calledArgs.push(req.params.cid.toString());
+        return res(ctx.status(200));
+      })
+    );
+
+    const user = userEvent.setup();
+    render(
+      <WalletConfigProvider>
+        <App />
+      </WalletConfigProvider>
+    );
+
+    const delegationsLink = await screen.findByRole('link', { name: 'Delegations' });
+    await user.click(delegationsLink);
+
+    const buttons = await screen.findAllByRole('button', { name: buttonName });
+    expect(buttons.length).toBe(mockMintingDelegationProposals.length);
+
+    await user.click(buttons[0]);
+
+    expect(calledArgs).toHaveLength(1);
+  });
+
   test('transfer preapproval (without token standard) does not show nor send description if not supported', async () => {
     // token standard as not supported
     server.use(featureSupportHandler(false, false));
