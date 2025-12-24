@@ -372,8 +372,8 @@ class WalletFrontendIntegrationTest
 
             // 9. Add another proposal, refresh the UI and confirm that it appears
             actAndCheck(
-              "Beneficiary 3 creates new minting proposal and UI refreshes", {
-                createMintingDelegationProposal(beneficiary3Onboarding, aliceParty, expiresAt)
+              "Beneficiary 2 creates new minting proposal and UI refreshes", {
+                createMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresAt)
                 webDriver.navigate().refresh()
               },
             )(
@@ -388,6 +388,22 @@ class WalletFrontendIntegrationTest
             )
             screenshotWithName("08-delegations-new-proposal-appears")
 
+            // 10. Accept proposal that causes automatic withdraw of existing delegation for beneficary 2
+            actAndCheck(
+              "Alice clicks Accept on new proposal and confirms", {
+                clickByCssSelector(".proposal-row .proposal-accept")
+                screenshotWithName("10-delegations-confirm-complex-accept")
+                eventuallyClickOn(id("accept-proposal-confirmation-dialog-accept-button"))
+              },
+            )(
+              "No proposals, and still just 1 delegation",
+              _ => {
+                eventually() {
+                  checkRowCounts(0, 1)
+                }
+              },
+            )
+            screenshotWithName("11-delegations-accept-causes-withdraw")
           }
       }
 
