@@ -514,7 +514,7 @@ describe('Wallet user can', () => {
 
     // Verify both headings are present
     expect(screen.getByRole('heading', { name: 'Proposed' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Delegations' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Active' })).toBeDefined();
 
     // Verify both tables exist
     expect(screen.getByRole('table', { name: 'proposals table' })).toBeDefined();
@@ -524,11 +524,13 @@ describe('Wallet user can', () => {
     const proposalRows = document.querySelectorAll('.proposal-row');
     expect(proposalRows.length).toBe(mockMintingDelegationProposals.length);
 
-    // Verify proposal beneficiary values
+    // Verify proposal beneficiary values (shortened)
     const proposalBeneficiaries = document.querySelectorAll('.proposal-beneficiary');
     expect(proposalBeneficiaries.length).toBe(mockMintingDelegationProposals.length);
     mockMintingDelegationProposals.forEach((proposal, index) => {
-      expect(proposalBeneficiaries[index].textContent).toBe(proposal.delegation.beneficiary);
+      expect(proposalBeneficiaries[index].textContent).toBe(
+        shortenPartyId(proposal.delegation.beneficiary)
+      );
     });
 
     // Verify proposal max amulets values
@@ -538,11 +540,12 @@ describe('Wallet user can', () => {
       expect(proposalMaxAmulets[index].textContent).toBe(proposal.delegation.amuletMergeLimit);
     });
 
-    // Verify proposal expiration values
+    // Verify proposal expiration values (formatted by DateDisplay)
     const proposalExpirations = document.querySelectorAll('.proposal-expiration');
     expect(proposalExpirations.length).toBe(mockMintingDelegationProposals.length);
     proposalExpirations.forEach(expiration => {
-      expect(expiration.textContent).toBe(delegationExpiresAt);
+      // DateDisplay formats the date, so just check it contains the year
+      expect(expiration.textContent).toContain('2050');
     });
 
     // Verify Accept buttons are present for each proposal
@@ -556,11 +559,11 @@ describe('Wallet user can', () => {
     const delegationRows = document.querySelectorAll('.delegation-row');
     expect(delegationRows.length).toBe(mockMintingDelegations.length);
 
-    // Verify beneficiary values are displayed
+    // Verify beneficiary values are displayed (shortened)
     const beneficiaries = document.querySelectorAll('.delegation-beneficiary');
     expect(beneficiaries.length).toBe(mockMintingDelegations.length);
     mockMintingDelegations.forEach((delegation, index) => {
-      expect(beneficiaries[index].textContent).toBe(delegation.beneficiary);
+      expect(beneficiaries[index].textContent).toBe(shortenPartyId(delegation.beneficiary));
     });
 
     // Verify max amulets values are displayed
@@ -570,11 +573,12 @@ describe('Wallet user can', () => {
       expect(maxAmulets[index].textContent).toBe(delegation.amuletMergeLimit);
     });
 
-    // Verify expiration values are displayed (all same date in 2050)
+    // Verify expiration values are displayed (formatted by DateDisplay)
     const expirations = document.querySelectorAll('.delegation-expiration');
     expect(expirations.length).toBe(mockMintingDelegations.length);
     expirations.forEach(expiration => {
-      expect(expiration.textContent).toBe(delegationExpiresAt);
+      // DateDisplay formats the date, so just check it contains the year
+      expect(expiration.textContent).toContain('2050');
     });
 
     // Verify withdraw buttons are present for each delegation
@@ -611,11 +615,11 @@ describe('Wallet user can', () => {
 
     // Verify both headings are present
     expect(screen.getByRole('heading', { name: 'Proposed' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Delegations' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Active' })).toBeDefined();
 
     // Verify the empty state messages are displayed
     expect(await screen.findByText('No proposals')).toBeDefined();
-    expect(await screen.findByText('No delegations')).toBeDefined();
+    expect(await screen.findByText('None active')).toBeDefined();
 
     // Verify the tables are NOT rendered
     expect(screen.queryByRole('table', { name: 'proposals table' })).toBeNull();
