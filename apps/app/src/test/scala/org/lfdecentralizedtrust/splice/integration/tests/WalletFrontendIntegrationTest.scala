@@ -305,8 +305,9 @@ class WalletFrontendIntegrationTest
 
             // 5. Accept first proposal via UI
             actAndCheck(
-              "Alice clicks Accept on the first proposal", {
+              "Alice clicks Accept on the first proposal and confirms", {
                 clickByCssSelector(".proposal-row .proposal-accept")
+                eventuallyClickOn(id("accept-proposal-confirmation-dialog-accept-button"))
               },
             )(
               "2 proposals remain, 1 delegation created",
@@ -320,8 +321,10 @@ class WalletFrontendIntegrationTest
 
             // 6. Accept second proposal via UI
             actAndCheck(
-              "Alice clicks Accept on the second proposal", {
+              "Alice clicks Accept on the second proposal and confirms", {
                 clickByCssSelector(".proposal-row .proposal-accept")
+                screenshotWithName("03-delegations-confirm-accept-proposal")
+                eventuallyClickOn(id("accept-proposal-confirmation-dialog-accept-button"))
               },
             )(
               "1 proposal remains, 2 delegations exist",
@@ -331,12 +334,13 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-            screenshotWithName("03-delegations-accept-again")
+            screenshotWithName("04-delegations-accept-again")
 
             // 7. Withdraw one delegation via UI
             actAndCheck(
-              "Alice clicks Withdraw on the first delegation", {
+              "Alice clicks Withdraw on the first delegation and confirms", {
                 clickByCssSelector(".delegation-row .delegation-withdraw")
+                eventuallyClickOn(id("withdraw-delegation-confirmation-dialog-accept-button"))
               },
             )(
               "1 proposal remains, 1 delegation remains",
@@ -346,12 +350,14 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-            screenshotWithName("04-delegations-withdraw-delegation")
+            screenshotWithName("05-delegations-withdraw-delegation")
 
             // 8. Reject the final proposal via UI
             actAndCheck(
-              "Alice clicks Reject on the final proposal", {
+              "Alice clicks Reject on the final proposal and confirms", {
                 clickByCssSelector(".proposal-row .proposal-reject")
+                screenshotWithName("06-delegations-confirm-withdraw-delegation")
+                eventuallyClickOn(id("reject-proposal-confirmation-dialog-accept-button"))
               },
             )(
               "No proposals remain, 1 delegation remains",
@@ -362,7 +368,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-            screenshotWithName("05-delegations-reject-proposal")
+            screenshotWithName("07-delegations-reject-proposal")
 
             // 9. Add another proposal, refresh the UI and confirm that it appears
             actAndCheck(
@@ -380,7 +386,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
-            screenshotWithName("06-delegations-new-proposal-appears")
+            screenshotWithName("08-delegations-new-proposal-appears")
 
           }
       }
