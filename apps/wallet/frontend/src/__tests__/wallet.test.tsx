@@ -19,8 +19,9 @@ import {
 } from './mocks/constants';
 import {
   mockMintingDelegations,
+  mockMintingDelegationsSorted,
   mockMintingDelegationProposals,
-  delegationExpiresAt,
+  mockMintingDelegationProposalsSorted,
 } from './mocks/delegation-constants';
 import { requestMocks } from './mocks/handlers/transfers-api';
 import { server } from './setup/setup';
@@ -507,7 +508,7 @@ describe('Wallet user can', () => {
     expect(await screen.findAllByText('@')).toHaveLength(3);
   });
 
-  test('navigate to delegations tab and see proposals and delegations tables', async () => {
+  test('navigate to delegations tab and see proposals and delegations tables sorted by expiration', async () => {
     server.use(featureSupportHandler(true, true));
     const user = userEvent.setup();
     render(
@@ -529,29 +530,29 @@ describe('Wallet user can', () => {
     expect(screen.getByRole('table', { name: 'proposals table' })).toBeDefined();
     expect(screen.getByRole('table', { name: 'delegations table' })).toBeDefined();
 
-    // ---- Verify Proposals table ----
+    // ---- Verify Proposals table (should be sorted by expiration, earliest first) ----
     const proposalRows = document.querySelectorAll('.proposal-row');
     expect(proposalRows.length).toBe(mockMintingDelegationProposals.length);
 
-    // Verify proposal beneficiary values (shortened)
+    // Verify proposal beneficiary values are in sorted order (by expiration date)
     const proposalBeneficiaries = document.querySelectorAll('.proposal-beneficiary');
-    expect(proposalBeneficiaries.length).toBe(mockMintingDelegationProposals.length);
-    mockMintingDelegationProposals.forEach((proposal, index) => {
+    expect(proposalBeneficiaries.length).toBe(mockMintingDelegationProposalsSorted.length);
+    mockMintingDelegationProposalsSorted.forEach((proposal, index) => {
       expect(proposalBeneficiaries[index].textContent).toBe(
         shortenPartyId(proposal.delegation.beneficiary)
       );
     });
 
-    // Verify proposal max amulets values
+    // Verify proposal max amulets values are in sorted order
     const proposalMaxAmulets = document.querySelectorAll('.proposal-max-amulets');
-    expect(proposalMaxAmulets.length).toBe(mockMintingDelegationProposals.length);
-    mockMintingDelegationProposals.forEach((proposal, index) => {
+    expect(proposalMaxAmulets.length).toBe(mockMintingDelegationProposalsSorted.length);
+    mockMintingDelegationProposalsSorted.forEach((proposal, index) => {
       expect(proposalMaxAmulets[index].textContent).toBe(proposal.delegation.amuletMergeLimit);
     });
 
     // Verify proposal expiration values (formatted by DateDisplay)
     const proposalExpirations = document.querySelectorAll('.proposal-expiration');
-    expect(proposalExpirations.length).toBe(mockMintingDelegationProposals.length);
+    expect(proposalExpirations.length).toBe(mockMintingDelegationProposalsSorted.length);
     proposalExpirations.forEach(expiration => {
       // DateDisplay formats the date, so just check it contains the year
       expect(expiration.textContent).toContain('2050');
@@ -559,32 +560,32 @@ describe('Wallet user can', () => {
 
     // Verify Accept buttons are present for each proposal
     const acceptButtons = document.querySelectorAll('.proposal-accept');
-    expect(acceptButtons.length).toBe(mockMintingDelegationProposals.length);
+    expect(acceptButtons.length).toBe(mockMintingDelegationProposalsSorted.length);
     acceptButtons.forEach(button => {
       expect(button.textContent).toBe('Accept');
     });
 
-    // ---- Verify Delegations table ----
+    // ---- Verify Delegations table (should be sorted by expiration, earliest first) ----
     const delegationRows = document.querySelectorAll('.delegation-row');
     expect(delegationRows.length).toBe(mockMintingDelegations.length);
 
-    // Verify beneficiary values are displayed (shortened)
+    // Verify beneficiary values are in sorted order (by expiration date)
     const beneficiaries = document.querySelectorAll('.delegation-beneficiary');
-    expect(beneficiaries.length).toBe(mockMintingDelegations.length);
-    mockMintingDelegations.forEach((delegation, index) => {
+    expect(beneficiaries.length).toBe(mockMintingDelegationsSorted.length);
+    mockMintingDelegationsSorted.forEach((delegation, index) => {
       expect(beneficiaries[index].textContent).toBe(shortenPartyId(delegation.beneficiary));
     });
 
-    // Verify max amulets values are displayed
+    // Verify max amulets values are in sorted order
     const maxAmulets = document.querySelectorAll('.delegation-max-amulets');
-    expect(maxAmulets.length).toBe(mockMintingDelegations.length);
-    mockMintingDelegations.forEach((delegation, index) => {
+    expect(maxAmulets.length).toBe(mockMintingDelegationsSorted.length);
+    mockMintingDelegationsSorted.forEach((delegation, index) => {
       expect(maxAmulets[index].textContent).toBe(delegation.amuletMergeLimit);
     });
 
     // Verify expiration values are displayed (formatted by DateDisplay)
     const expirations = document.querySelectorAll('.delegation-expiration');
-    expect(expirations.length).toBe(mockMintingDelegations.length);
+    expect(expirations.length).toBe(mockMintingDelegationsSorted.length);
     expirations.forEach(expiration => {
       // DateDisplay formats the date, so just check it contains the year
       expect(expiration.textContent).toContain('2050');
@@ -592,7 +593,7 @@ describe('Wallet user can', () => {
 
     // Verify withdraw buttons are present for each delegation
     const withdrawButtons = document.querySelectorAll('.delegation-withdraw');
-    expect(withdrawButtons.length).toBe(mockMintingDelegations.length);
+    expect(withdrawButtons.length).toBe(mockMintingDelegationsSorted.length);
     withdrawButtons.forEach(button => {
       expect(button.textContent).toBe('Withdraw');
     });
