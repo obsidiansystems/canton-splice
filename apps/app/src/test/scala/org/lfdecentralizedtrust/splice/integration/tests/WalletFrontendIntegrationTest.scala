@@ -250,7 +250,9 @@ class WalletFrontendIntegrationTest
           }
 
           // 3. Create three proposals, one from each beneficiary
-          val expiresAt = env.environment.clock.now.plus(Duration.ofDays(30)).toInstant
+          val envNow = env.environment.clock.now
+          val expiresAt = envNow.plus(Duration.ofDays(30)).toInstant
+          val expiresDayAfter = envNow.plus(Duration.ofDays(31)).toInstant
           actAndCheck(
             "Each beneficiary creates a minting delegation proposal", {
               createMintingDelegationProposal(beneficiary1Onboarding, aliceParty, expiresAt)
@@ -373,7 +375,7 @@ class WalletFrontendIntegrationTest
             // 9. Add another proposal, refresh the UI and confirm that it appears
             actAndCheck(
               "Beneficiary 2 creates new minting proposal and UI refreshes", {
-                createMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresAt)
+                createLimitedMintingDelegationProposal(beneficiary2Onboarding, aliceParty, expiresDayAfter, 18)
                 webDriver.navigate().refresh()
               },
             )(
@@ -448,13 +450,20 @@ class WalletFrontendIntegrationTest
         )
       }
     }
-
   }
 
   private def createMintingDelegationProposal(
       beneficiaryOnboarding: OnboardingResult,
       delegate: PartyId,
+      expiresAt: java.time.Instant
+  )(implicit env: SpliceTestConsoleEnvironment): Unit =
+    createLimitedMintingDelegationProposal(beneficiaryOnboarding, delegate, expiresAt, 10)
+
+  private def createLimitedMintingDelegationProposal(
+      beneficiaryOnboarding: OnboardingResult,
+      delegate: PartyId,
       expiresAt: java.time.Instant,
+      mergeLimit: Int
   )(implicit env: SpliceTestConsoleEnvironment): Unit = {
     val beneficiary = beneficiaryOnboarding.party
     val proposal = new mintingDelegationCodegen.MintingDelegationProposal(
@@ -463,7 +472,7 @@ class WalletFrontendIntegrationTest
         delegate.toProtoPrimitive,
         dsoParty.toProtoPrimitive,
         expiresAt,
-        10, // amuletMergeLimit
+        mergeLimit,
       )
     )
     // Use externally signed submission for the external party
