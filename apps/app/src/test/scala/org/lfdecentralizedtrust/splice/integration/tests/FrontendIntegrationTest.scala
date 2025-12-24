@@ -440,13 +440,20 @@ trait FrontendTestCommon extends TestCommon with WebBrowser with CustomMatchers 
   /** Takes a screenshot of the current browser state, into a timestamped png file in log directory.
     * Currently intended only for manual use during development and debugging.
     */
-  protected def screenshot()(implicit webDriver: WebDriverType): Unit = {
+  protected def screenshot()(implicit webDriver: WebDriverType): Unit =
+    screenshotWithName("screenshot")
+
+
+  /** Takes a screenshot of the current browser state, into a timestamped png file in log directory.
+    * Currently intended only for manual use during development and debugging.
+    */
+  protected def screenshotWithName(name: String)(implicit webDriver: WebDriverType): Unit = {
     clue("Saving screenshot") {
       val fullScreen = webDriver.findElement(By.tagName("body"))
       val screenshotFile = fullScreen.getScreenshotAs(OutputType.FILE)
       val time = Calendar.getInstance.getTime
       val timestamp = new SimpleDateFormat("yy-MM-dd-H:m:s.S").format(time)
-      val filename = Paths.get("log", s"screenshot-${timestamp}.png").toString
+      val filename = Paths.get("log", s"${name}-${timestamp}.png").toString
       FileUtils.copyFile(screenshotFile, new File(filename))
     }
   }
@@ -682,6 +689,16 @@ trait FrontendTestCommon extends TestCommon with WebBrowser with CustomMatchers 
       }
     }
     clickOn(query)
+  }
+
+  protected def clickByCssSelector(selector :String) (
+    implicit webDriver : WebDriver
+  ): Unit = {
+    val query = cssSelector(selector)
+    waitForCondition(query) {
+      ExpectedConditions.elementToBeClickable(_)
+    }
+    eventuallyClickOn(query)
   }
 
   protected def eventuallyFind(query: Query)(implicit driver: WebDriver) = {
