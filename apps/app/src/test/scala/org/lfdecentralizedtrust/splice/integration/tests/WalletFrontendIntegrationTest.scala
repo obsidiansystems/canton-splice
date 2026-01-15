@@ -305,6 +305,8 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("01-delegations-after-setup")
+
             // 5. Accept first proposal via UI
             actAndCheck(
               "Alice clicks Accept on the first proposal and confirms", {
@@ -320,10 +322,13 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("02-delegations-accept-proposal")
+
             // 6. Accept second proposal via UI
             actAndCheck(
               "Alice clicks Accept on the second proposal and confirms", {
                 clickByCssSelector(".proposal-row .proposal-accept")
+                screenshotWithName("03-delegations-confirm-accept-proposal")
                 eventuallyClickOn(id("accept-proposal-confirmation-dialog-accept-button"))
               },
             )(
@@ -334,6 +339,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
+            screenshotWithName("04-delegations-accept-again")
 
             // 7. Withdraw one delegation via UI
             actAndCheck(
@@ -350,10 +356,13 @@ class WalletFrontendIntegrationTest
               },
             )
 
+            screenshotWithName("05-delegations-withdraw-delegation")
+
             // 8. Reject the final proposal via UI
             actAndCheck(
               "Alice clicks Reject on the final proposal and confirms", {
                 clickByCssSelector(".proposal-row .proposal-reject")
+                screenshotWithName("06-delegations-confirm-withdraw-delegation")
                 eventuallyClickOn(id("reject-proposal-confirmation-dialog-accept-button"))
               },
             )(
@@ -365,6 +374,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
+            screenshotWithName("07-delegations-reject-proposal")
 
             // 9. Add another proposal, refresh the UI and confirm that it appears
             actAndCheck(
@@ -382,6 +392,7 @@ class WalletFrontendIntegrationTest
                 }
               },
             )
+            screenshotWithName("08-delegations-new-proposal-appears")
 
             // 10. Accept proposal that causes automatic withdraw of existing delegation for beneficary 2
             actAndCheck(
