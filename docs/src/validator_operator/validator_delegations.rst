@@ -26,20 +26,14 @@ A **minting delegation** grants a validator (the delegate) the authority to:
 
 The following reward coupon types may be minted through a delegation:
 
-.. list-table::
-   :widths: 30 70
-   :header-rows: 1
+- :ref:`ValidatorRewardCoupon <type-splice-amulet-validatorrewardcoupon-76808>`
+- :ref:`UnclaimedActivityRecord <type-splice-amulet-unclaimedactivityrecord-70904>`
+- :ref:`DevelopmentFundCoupon <type-splice-amulet-developmentfundcoupon-75673>`
+- :ref:`AppRewardCoupon <type-splice-amulet-apprewardcoupon-57229>`
+- :ref:`ValidatorLivenessActivityRecord <type-splice-validatorlicense-validatorlivenessactivityrecord-17293>`
 
-   * - Coupon Type
-     - Description
-   * - ``ValidatorRewardCoupon``
-     - Rewards for validator operators proportional to usage fees paid by hosted users
-   * - ``AppRewardCoupon``
-     - Rewards for app providers proportional to usage fees from Amulet transfers
-   * - ``SvRewardCoupon``
-     - Rewards for Super Validator nodes from the SV issuance pool
-   * - ``ValidatorLivenessActivityRecord``
-     - Records validator liveness activity per round (faucet rewards)
+.. note::
+   To mint :ref:`ValidatorRewardCoupon <type-splice-amulet-validatorrewardcoupon-76808>`, the beneficiary must first create a :ref:`ValidatorRight <type-splice-amulet-validatorright-15964>`.
 
 The delegation has the following key properties:
 
