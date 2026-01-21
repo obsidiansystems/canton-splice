@@ -8,9 +8,13 @@
 Minting Delegations
 -------------------
 
-Minting delegations allow a validator to mint rewards on behalf of another party (the beneficiary).
-This is useful for external parties who want a validator to manage their reward collection
-without having to run their own wallet automation.
+Minting delegations allow a delegate to mint rewards on behalf of another party (the beneficiary).
+This is useful for external parties who want someone else to manage their reward collection
+without running their own wallet automation.
+
+.. note::
+   While this document focuses on validators as delegates, any user with the Delegations tab
+   visible in their wallet can act as a delegate.
 
 Overview
 ++++++++
