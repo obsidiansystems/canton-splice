@@ -17,8 +17,25 @@ Overview
 
 A **minting delegation** grants a validator (the delegate) the authority to:
 
-- Mint validator rewards on behalf of a beneficiary party
+- Mint reward coupons on behalf of a beneficiary party
 - Auto-merge amulets for the beneficiary (up to the configured limit)
+
+The following reward coupon types may be minted through a delegation:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Coupon Type
+     - Description
+   * - ``ValidatorRewardCoupon``
+     - Rewards for validator operators proportional to usage fees paid by hosted users
+   * - ``AppRewardCoupon``
+     - Rewards for app providers proportional to usage fees from Amulet transfers
+   * - ``SvRewardCoupon``
+     - Rewards for Super Validator nodes from the SV issuance pool
+   * - ``ValidatorLivenessActivityRecord``
+     - Records validator liveness activity per round (faucet rewards)
 
 The delegation has the following key properties:
 
