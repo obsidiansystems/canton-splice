@@ -14,7 +14,8 @@ without running their own wallet automation.
 
 .. note::
    While this document focuses on validators as delegates, any user with the Delegations tab
-   visible in their wallet can act as a delegate.
+   visible in their wallet can act as a delegate. Validator operators can also use a separate
+   user account as the delegate rather than their operator account.
 
 Overview
 ++++++++
