@@ -129,29 +129,3 @@ When managing minting delegations, validators should consider:
 
 4. **Monitor active delegations**: Periodically review active delegations and withdraw any
    that are no longer needed or authorized.
-
-API Reference
-+++++++++++++
-
-For programmatic access to minting delegation functionality, the wallet exposes
-the following HTTP REST API endpoints:
-
-.. list-table::
-   :widths: 40 60
-   :header-rows: 1
-
-   * - Endpoint
-     - Description
-   * - ``GET /v0/wallet/minting-delegation-proposals``
-     - List all proposals where the user is the delegate
-   * - ``POST /v0/wallet/minting-delegation-proposals/{contract_id}/accept``
-     - Accept a proposal, creating a minting delegation
-   * - ``POST /v0/wallet/minting-delegation-proposals/{contract_id}/reject``
-     - Reject a proposal
-   * - ``GET /v0/wallet/minting-delegations``
-     - List all active delegations where the user is the delegate
-   * - ``POST /v0/wallet/minting-delegations/{contract_id}/reject``
-     - Withdraw (terminate) an active delegation
-
-For the underlying Daml contract models, see the
-:ref:`Splice.Wallet.MintingDelegation <module-splice-wallet-mintingdelegation-95009>` module documentation.
