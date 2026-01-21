@@ -52,6 +52,12 @@ The delegation has the following key properties:
    * - Amulet merge limit
      - The number of amulets to keep after auto-merging
 
+.. note::
+   The amulet merge limit controls automatic consolidation of the beneficiary's amulets: when
+   the number of amulets exceeds twice the limit, the smallest amulets are merged to maintain
+   exactly the configured number.
+
+
 Workflow
 ++++++++
 
@@ -110,6 +116,13 @@ a confirmation dialog will appear showing:
 Accepting the proposal will automatically replace the existing delegation with the new one.
 This allows beneficiaries to update their delegation parameters (such as extending the
 expiration date) without the validator having to manually withdraw the old delegation first.
+
+Limitations
++++++++++++
+
+- Minting delegations count towards the :ref:`max 200 Splice wallet parties limit <party_scaling>`: the
+  implementation runs one ingestion pipeline per minting delegation. There can be at most
+  200 of these without impacting validator node stability.
 
 Security Considerations
 +++++++++++++++++++++++
