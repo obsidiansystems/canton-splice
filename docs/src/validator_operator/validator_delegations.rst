@@ -18,7 +18,7 @@ Overview
 A **minting delegation** grants a validator (the delegate) the authority to:
 
 - Mint validator rewards on behalf of a beneficiary party
-- Auto-merge amulet contracts for the beneficiary (up to the configured limit)
+- Auto-merge amulets for the beneficiary (up to the configured limit)
 
 The delegation has the following key properties:
 
@@ -34,8 +34,8 @@ The delegation has the following key properties:
      - The validator party authorized to perform minting operations
    * - Expiration
      - The time after which the delegation is no longer valid
-   * - Max Amulets
-     - The number of amulet contracts to keep after auto-merging
+   * - Amulet merge limit
+     - The number of amulets to keep after auto-merging
 
 Workflow
 ++++++++
@@ -59,12 +59,7 @@ Proposed Delegations
 ^^^^^^^^^^^^^^^^^^^^
 
 The **Proposed** section shows all pending ``MintingDelegationProposal`` contracts where
-the validator is the designated delegate. Each proposal displays:
-
-- **Beneficiary**: The party requesting the delegation (shown as a shortened Party ID)
-- **Onboarded**: Whether the beneficiary is onboarded to the network (shown as a checkmark or X)
-- **Max Amulets**: The suggested number of amulet contracts to maintain after merging
-- **Expiration**: When the delegation will expire
+the validator is the designated delegate.
 
 For each proposal, the validator can:
 
@@ -81,12 +76,7 @@ Active Delegations
 ^^^^^^^^^^^^^^^^^^
 
 The **Active** section shows all current ``MintingDelegation`` contracts where the validator
-is the delegate. Each delegation displays:
-
-- **Beneficiary**: The party on whose behalf minting is performed
-- **Onboarded**: Whether the beneficiary is currently onboarded
-- **Max Amulets**: The configured amulet merge limit
-- **Expiration**: When the delegation expires
+is the delegate.
 
 For each active delegation, the validator can:
 
