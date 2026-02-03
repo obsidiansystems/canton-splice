@@ -16,15 +16,17 @@ create table sequencer_traffic_summary_store
     sender                      text not null,
     -- Total traffic cost of the message paid by the sender
     total_traffic_cost          bigint not null,
-    -- Traffic cost per envelope (parallel array with envelope_view_hashes)
-    envelope_traffic_costs      bigint[] not null,
-    -- View hashes per envelope, stored as pipe-delimited strings (parallel array with envelope_traffic_costs)
-    -- Each element contains view hashes for one envelope, e.g., 'hash1|hash2|hash3'
-    envelope_view_hashes        text[] not null,
+    -- Envelope data as JSONB array: [{"traffic_cost": 100, "view_hashes": ["h1", "h2"]}, ...]
+    -- Using JSONB because PostgreSQL 2D arrays require uniform dimensions,
+    -- but each envelope can have a different number of view_hashes
+    envelopes                   jsonb not null,
     constraint sequencer_traffic_summary_store_pkey primary key (row_id),
-    -- Unique constraint for deduplication during ingestion (sequencing_time is unique per history)
-    constraint sequencer_traffic_summary_unique unique (history_id, sequencing_time)
+    -- Unique constraint for deduplication during ingestion
+    constraint sequencer_traffic_summary_unique unique (history_id, sequencing_time, sender)
 );
 
 -- Index for efficient querying by history, migration and sequencing time
 create index sequencer_traffic_hi_mi_st on sequencer_traffic_summary_store (history_id, migration_id, sequencing_time);
+
+-- GIN index for efficient view_hash lookups in correlation queries via JSONB path
+create index sequencer_traffic_envelopes_gin on sequencer_traffic_summary_store using gin (envelopes jsonb_path_ops);
