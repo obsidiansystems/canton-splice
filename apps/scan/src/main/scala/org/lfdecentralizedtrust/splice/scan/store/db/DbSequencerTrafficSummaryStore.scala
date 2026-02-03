@@ -15,6 +15,8 @@ import com.digitalasset.canton.config.ProcessingTimeout
 import slick.jdbc.PostgresProfile
 import slick.jdbc.GetResult
 import slick.jdbc.canton.ActionBasedSQLInterpolation.Implicits.actionBasedSQLInterpolationCanton
+import io.circe.Json
+import io.circe.syntax.*
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,21 +30,22 @@ object DbSequencerTrafficSummaryStore {
       viewHashes: Seq[String],
   )
 
-  /** Delimiter used to encode view hashes as a single string in the database.
-    * Using pipe character as it's unlikely to appear in hash values.
-    */
-  private val ViewHashDelimiter = "|"
-
   object EnvelopeT {
+    import io.circe.{Decoder, Encoder}
 
-    /** Encode view hashes as a pipe-delimited string for database storage */
-    def encodeViewHashes(viewHashes: Seq[String]): String =
-      viewHashes.mkString(ViewHashDelimiter)
+    implicit val encoder: Encoder[EnvelopeT] = Encoder.instance { e =>
+      Json.obj(
+        "traffic_cost" -> e.trafficCost.asJson,
+        "view_hashes" -> e.viewHashes.asJson,
+      )
+    }
 
-    /** Decode view hashes from a pipe-delimited string */
-    def decodeViewHashes(encoded: String): Seq[String] =
-      if (encoded.isEmpty) Seq.empty
-      else encoded.split(ViewHashDelimiter, -1).toSeq
+    implicit val decoder: Decoder[EnvelopeT] = Decoder.instance { c =>
+      for {
+        trafficCost <- c.downField("traffic_cost").as[Long]
+        viewHashes <- c.downField("view_hashes").as[Seq[String]]
+      } yield EnvelopeT(trafficCost, viewHashes)
+    }
   }
 
   final case class TrafficSummaryT(
@@ -106,15 +109,12 @@ class DbSequencerTrafficSummaryStore(
   type EnvelopeT = DbSequencerTrafficSummaryStore.EnvelopeT
   val EnvelopeT = DbSequencerTrafficSummaryStore.EnvelopeT
 
-  /** Reconstruct envelopes from parallel arrays of traffic costs and encoded view hashes */
-  private def parseEnvelopes(trafficCosts: Array[Long], viewHashes: Array[String]): Seq[EnvelopeT] = {
-    require(
-      trafficCosts.length == viewHashes.length,
-      s"Mismatched array lengths: trafficCosts=${trafficCosts.length}, viewHashes=${viewHashes.length}",
-    )
-    trafficCosts.zip(viewHashes).map { case (cost, encodedHashes) =>
-      EnvelopeT(cost, EnvelopeT.decodeViewHashes(encodedHashes))
-    }.toSeq
+  private def parseEnvelopes(json: Json): Seq[EnvelopeT] = {
+    json.as[Seq[EnvelopeT]] match {
+      case Right(envelopes) => envelopes
+      case Left(err) =>
+        throw new IllegalStateException(s"Failed to parse envelopes JSON: $err")
+    }
   }
 
   private implicit val GetResultTrafficSummaryRow: GetResult[TrafficSummaryT] = GetResult { prs =>
@@ -126,13 +126,15 @@ class DbSequencerTrafficSummaryStore(
       <<[CantonTimestamp], // sequencing_time
       <<[String], // sender
       <<[Long], // total_traffic_cost
-      parseEnvelopes(<<[Array[Long]], <<[Array[String]]), // envelope_traffic_costs, envelope_view_hashes
+      parseEnvelopes(<<[Json]), // envelopes
     )
   }
 
+  private def envelopesToJson(envelopes: Seq[EnvelopeT]): Json = {
+    envelopes.asJson
+  }
+
   private def sqlInsertTrafficSummary(row: TrafficSummaryT) = {
-    val trafficCosts = row.envelopes.map(_.trafficCost)
-    val viewHashes = row.envelopes.map(e => EnvelopeT.encodeViewHashes(e.viewHashes))
     sql"""
       insert into #${Tables.trafficSummaries}(
         history_id,
@@ -141,8 +143,7 @@ class DbSequencerTrafficSummaryStore(
         sequencing_time,
         sender,
         total_traffic_cost,
-        envelope_traffic_costs,
-        envelope_view_hashes
+        envelopes
       ) values (
         $historyId,
         ${row.migrationId},
@@ -150,17 +151,16 @@ class DbSequencerTrafficSummaryStore(
         ${row.sequencingTime},
         ${row.sender},
         ${row.totalTrafficCost},
-        $trafficCosts,
-        $viewHashes
+        ${envelopesToJson(row.envelopes)}
       )
-      on conflict (history_id, sequencing_time) do nothing
+      on conflict (history_id, sequencing_time, sender) do nothing
     """.asUpdate
   }
 
   /** Insert multiple traffic summaries in a single transaction.
     *
     * We use INSERT ... ON CONFLICT DO NOTHING to handle duplicates.
-    * Duplicates are identified by (history_id, sequencing_time).
+    * Duplicates are identified by (history_id, sequencing_time, sender).
     */
   def insertTrafficSummaries(
       items: Seq[TrafficSummaryT]
@@ -214,8 +214,7 @@ class DbSequencerTrafficSummaryStore(
         sequencing_time,
         sender,
         total_traffic_cost,
-        envelope_traffic_costs,
-        envelope_view_hashes
+        envelopes
       from #${Tables.trafficSummaries}
       where history_id = $historyId
         and """ ++ migrationFilter ++ sql" and " ++ timeFilter ++
