@@ -33,6 +33,7 @@ import org.lfdecentralizedtrust.splice.environment.{
 import org.lfdecentralizedtrust.splice.http.v0.definitions.{
   AcsRequest,
   BatchListVotesByVoteRequestsRequest,
+  ConfirmationRequestTrafficSummariesRequest,
   DamlValueEncoding,
   ErrorResponse,
   EventHistoryRequest,
@@ -53,6 +54,8 @@ import org.lfdecentralizedtrust.splice.scan.store.{
   ScanStore,
   TxLogEntry,
 }
+import org.lfdecentralizedtrust.splice.store.TimestampWithMigrationId
+import org.lfdecentralizedtrust.splice.scan.store.db.DbSequencerTrafficSummaryStore
 import org.lfdecentralizedtrust.splice.util.{
   Codec,
   Contract,
@@ -124,6 +127,7 @@ class HttpScanHandler(
     updateHistory: UpdateHistory,
     snapshotStore: AcsSnapshotStore,
     eventStore: ScanEventStore,
+    trafficStore: DbSequencerTrafficSummaryStore,
     dsoAnsResolver: DsoAnsResolver,
     miningRoundsCacheTimeToLiveOverride: Option[NonNegativeFiniteDuration],
     enableForcedAcsSnapshots: Boolean,
@@ -916,6 +920,31 @@ class HttpScanHandler(
         extracted,
       )
         .map(items => definitions.EventHistoryResponse(items))
+    }
+  }
+
+  override def getConfirmationRequestTrafficSummaries(
+      respond: ScanResource.GetConfirmationRequestTrafficSummariesResponse.type
+  )(
+      request: ConfirmationRequestTrafficSummariesRequest
+  )(
+      extracted: TraceContext
+  ): Future[ScanResource.GetConfirmationRequestTrafficSummariesResponse] = {
+    implicit val tc: TraceContext = extracted
+    withSpan(s"$workflowId.getConfirmationRequestTrafficSummaries") { _ => _ =>
+      val afterO = request.after.map { a =>
+        val afterSequencingTime = CantonTimestamp.assertFromInstant(a.afterSequencingTime.toInstant)
+        TimestampWithMigrationId(afterSequencingTime, a.afterMigrationId)
+      }
+      for {
+        summaries <- trafficStore.listTrafficSummariesWithEnvelopes(
+          afterO = afterO,
+          limit = request.pageSize,
+        )
+      } yield {
+        val encodedSummaries = summaries.map(ScanHttpEncodings.encodeTrafficSummary).toVector
+        definitions.ConfirmationRequestTrafficSummariesResponse(encodedSummaries)
+      }
     }
   }
 
