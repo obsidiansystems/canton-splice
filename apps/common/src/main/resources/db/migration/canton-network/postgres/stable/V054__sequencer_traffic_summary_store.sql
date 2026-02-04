@@ -21,8 +21,8 @@ create table sequencer_traffic_summary_store
     -- but each envelope can have a different number of view_hashes
     envelopes                   jsonb not null,
     constraint sequencer_traffic_summary_store_pkey primary key (row_id),
-    -- Unique constraint for deduplication during ingestion
-    constraint sequencer_traffic_summary_unique unique (history_id, sequencing_time, sender)
+    -- Unique constraint for deduplication during ingestion (sequencing_time is unique per history)
+    constraint sequencer_traffic_summary_unique unique (history_id, sequencing_time)
 );
 
 -- Index for efficient querying by history, migration and sequencing time
