@@ -156,24 +156,23 @@ Canton Ledger API.
 Prerequisites
 """""""""""""
 
-Before creating a proposal, the beneficiary must:
+Before creating a proposal, the beneficiary must have:
 
-1. **Be hosted on the validator node**: The beneficiary party must be hosted on the validator
-   node where they want to delegate minting. Contact the validator operator to arrange hosting.
+1. **Hosting on the validator node**: The beneficiary party must be hosted on the validator
+   node where they want to delegate minting.
 
-2. **Have Ledger API access**: The beneficiary needs authenticated access to the validator's
-   Ledger API endpoint. This typically requires:
+2. **Ledger API access**: Authenticated access to the validator's Ledger API endpoint,
+   including:
 
    - The Ledger API URL (e.g., ``https://<validator-host>:<port>``)
    - Valid authentication credentials (OAuth2 token or other configured auth method)
    - The beneficiary's party ID
 
-3. **Know the delegate's party ID**: The delegate is typically the validator operator party,
-   but could be another internal party on the validator node. Obtain this from the validator
-   operator.
+3. **The delegate's party ID**: The delegate is typically the validator operator party,
+   but could be another internal party on the validator node.
 
-4. **Know the DSO party ID**: The DSO party ID for the network. This can be obtained from
-   the Scan API or from the validator operator.
+4. **The DSO party ID**: The DSO party ID for the network. This can be obtained from
+   the Scan API.
 
 Example: Creating a Proposal
 """"""""""""""""""""""""""""
@@ -212,27 +211,12 @@ with the following payload structure:
      ]
    }
 
-Where:
-
-- ``beneficiary`` is the party ID of the external party creating the proposal
-- ``delegate`` is the party ID of the validator operator (or other internal party)
-- ``dso`` is the DSO party ID for the network
-- ``expiresAt`` is the delegation expiration timestamp in ISO 8601 format
-- ``amuletMergeLimit`` is the suggested number of amulets to keep after auto-merging (recommended: 40)
-
 See the `MintingDelegationProposal template source code
 <https://github.com/hyperledger-labs/splice/blob/main/daml/splice-wallet/daml/Splice/Wallet/MintingDelegation.daml>`_
 for the complete Daml definition.
 
-After Proposal Creation
-"""""""""""""""""""""""
-
-Once the proposal is created:
-
-1. The proposal appears in the delegate's wallet UI under **Delegations > Proposed**
-2. The delegate reviews the proposal and either accepts or rejects it
-3. If accepted, an active ``MintingDelegation`` contract is created
-4. The validator's automation begins minting rewards on behalf of the beneficiary
+Monitoring Proposal Status
+""""""""""""""""""""""""""
 
 The beneficiary can monitor their proposal status by querying for active
 ``MintingDelegationProposal`` contracts via the Ledger API's
