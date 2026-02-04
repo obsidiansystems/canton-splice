@@ -35,7 +35,7 @@ import org.lfdecentralizedtrust.splice.scan.admin.http.{
 }
 import org.lfdecentralizedtrust.splice.scan.automation.{
   ScanAutomationService,
-  ScanVerdictAutomationService,
+  ScanIngestionAutomationService,
   SequencerTrafficSummaryAutomationService,
 }
 import org.lfdecentralizedtrust.splice.scan.config.ScanAppBackendConfig
@@ -285,7 +285,7 @@ class ScanApp(
         appInitConnection,
         loggerFactory,
       )
-      verdictAutomation = new ScanVerdictAutomationService(
+      verdictAutomation = new ScanIngestionAutomationService(
         config,
         clock,
         retryProvider,
@@ -455,7 +455,7 @@ object ScanApp {
       storage: Storage,
       store: ScanStore,
       automation: ScanAutomationService,
-      verdictAutomation: ScanVerdictAutomationService,
+      verdictAutomation: ScanIngestionAutomationService,
       trafficAutomation: SequencerTrafficSummaryAutomationService,
       eventStore: ScanEventStore,
       logger: TracedLogger,
