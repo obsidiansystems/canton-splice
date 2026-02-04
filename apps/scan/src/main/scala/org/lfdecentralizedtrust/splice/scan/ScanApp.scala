@@ -309,6 +309,7 @@ class ScanApp(
         acsSnapshotStore,
         scanEventStore,
         scanTrafficStore,
+        config.sequencerTrafficIngestion.enabled,
         dsoAnsResolver,
         config.miningRoundsCacheTimeToLiveOverride,
         config.enableForcedAcsSnapshots,
