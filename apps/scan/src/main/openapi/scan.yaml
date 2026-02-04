@@ -3858,7 +3858,7 @@ components:
           format: int64
         envelopes:
           description: |
-            Summaries for the envelopes that contain (encrypted) views.
+            Summary of traffic cost of envelopes having at least one view.
           type: array
           items:
             $ref: "#/components/schemas/ViewEnvelopeTrafficSummary"
