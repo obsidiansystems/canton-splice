@@ -161,6 +161,56 @@ trait AcsJdbcTypes {
   protected implicit lazy val stringSeqOptGetResult: GetResult[Option[Seq[String]]] =
     stringArrayOptGetResult.andThen(_.map(_.toSeq))
 
+  protected implicit lazy val longArrayGetResult: GetResult[Array[Long]] = (r: PositionedResult) =>
+    {
+      val sqlArray = r.rs.getArray(r.skip.currentPos)
+      if (sqlArray == null) Array.emptyLongArray
+      else
+        sqlArray.getArray match {
+          case arr: Array[java.lang.Long] => arr.map(_.longValue())
+          case arr: Array[Long] => arr
+          case x =>
+            throw new IllegalStateException(
+              s"Expected an array of longs, but got $x. Are you sure you selected a bigint array column?"
+            )
+        }
+    }
+
+  protected implicit lazy val longSeqSetParameter: SetParameter[Seq[Long]] =
+    (longs: Seq[Long], pp: PositionedParameters) =>
+      pp.setObject(
+        pp.ps.getConnection.createArrayOf("bigint", longs.map(java.lang.Long.valueOf).toArray),
+        JDBCType.ARRAY.getVendorTypeNumber,
+      )
+
+  protected implicit lazy val string2DArrayGetResult: GetResult[Seq[Seq[String]]] =
+    (r: PositionedResult) => {
+      val sqlArray = r.rs.getArray(r.skip.currentPos)
+      if (sqlArray == null) Seq.empty
+      else
+        sqlArray.getArray match {
+          case arr: Array[Array[String @unchecked]] => arr.map(_.toSeq).toSeq
+          case arr: Array[String @unchecked] =>
+            // Empty 2D array comes back as empty 1D array
+            if (arr.isEmpty) Seq.empty
+            else
+              throw new IllegalStateException(
+                s"Expected a 2D array of strings, but got 1D array: $arr"
+              )
+          case x =>
+            throw new IllegalStateException(
+              s"Expected a 2D array of strings, but got ${x.getClass.getName}. Are you sure you selected a text[][] column?"
+            )
+        }
+    }
+
+  protected implicit lazy val string2DArraySetParameter: SetParameter[Seq[Seq[String]]] =
+    (strings: Seq[Seq[String]], pp: PositionedParameters) =>
+      pp.setObject(
+        pp.ps.getConnection.createArrayOf("text", strings.map(_.toArray).toArray),
+        JDBCType.ARRAY.getVendorTypeNumber,
+      )
+
   protected implicit lazy val intSeqSetParameter: SetParameter[Seq[Int]] =
     (ints: Seq[Int], pp: PositionedParameters) =>
       DbParameterUtils.setArrayIntOParameterDb(Some(ints.toArray), pp)

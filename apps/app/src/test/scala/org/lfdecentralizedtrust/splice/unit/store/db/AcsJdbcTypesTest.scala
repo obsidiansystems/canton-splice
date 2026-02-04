@@ -115,6 +115,59 @@ class AcsJdbcTypesTest
         )
       } yield result.toSeq should contain theSameElementsAs value
     }
+
+    "set and get long arrays" in {
+      val value = Seq(1L, 2L, 3L, Long.MaxValue, Long.MinValue)
+      for {
+        result <- storage.querySingle(
+          sql"select ${value}".as[Array[Long]].headOption,
+          "long array",
+        )
+      } yield result.toSeq should contain theSameElementsAs value
+    }
+
+    "set and get empty long arrays" in {
+      val value = Seq.empty[Long]
+      for {
+        result <- storage.querySingle(
+          sql"select ${value}".as[Array[Long]].headOption,
+          "empty long array",
+        )
+      } yield result.toSeq shouldBe empty
+    }
+
+    "set and get 2D string arrays" in {
+      val value = Seq(Seq("a", "b", "c"), Seq("d", "e", "f"), Seq("g", "h", "i"))
+      for {
+        result <- storage.querySingle(
+          sql"select ${value}".as[Seq[Seq[String]]].headOption,
+          "2D string array",
+        )
+      } yield result shouldBe value
+    }
+
+    "set and get empty 2D string arrays" in {
+      val value = Seq.empty[Seq[String]]
+      for {
+        result <- storage.querySingle(
+          sql"select ${value}".as[Seq[Seq[String]]].headOption,
+          "empty 2D string array",
+        )
+      } yield result shouldBe empty
+    }
+
+    // Note: PostgreSQL 2D arrays require uniform dimensions, so we can't have
+    // jagged arrays (e.g., Seq(Seq("a", "b"), Seq.empty, Seq("c"))).
+    // All inner arrays must have the same length.
+    "set and get 2D string arrays with uniform dimensions" in {
+      val value = Seq(Seq("a", "b"), Seq("c", "d"), Seq("e", "f"))
+      for {
+        result <- storage.querySingle(
+          sql"select ${value}".as[Seq[Seq[String]]].headOption,
+          "2D string array uniform",
+        )
+      } yield result shouldBe value
+    }
   }
 
   case class TestRow(
