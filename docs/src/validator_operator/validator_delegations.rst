@@ -145,6 +145,110 @@ This allows beneficiaries to update their delegation parameters (such as extendi
 expiration date) without the delegate having to manually withdraw the old delegation first.
 
 
+Creating Proposals via Ledger API
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+External parties (beneficiaries) who wish to delegate minting to a validator operator
+must create a ``MintingDelegationProposal`` contract. Since beneficiaries typically do not
+have access to the wallet UI, they can create proposals programmatically using the
+Canton Ledger API.
+
+Prerequisites
+"""""""""""""
+
+Before creating a proposal, the beneficiary must:
+
+1. **Be hosted on the validator node**: The beneficiary party must be hosted on the validator
+   node where they want to delegate minting. Contact the validator operator to arrange hosting.
+
+2. **Have Ledger API access**: The beneficiary needs authenticated access to the validator's
+   Ledger API endpoint. This typically requires:
+
+   - The Ledger API URL (e.g., ``https://<validator-host>:<port>``)
+   - Valid authentication credentials (OAuth2 token or other configured auth method)
+   - The beneficiary's party ID
+
+3. **Know the delegate's party ID**: The delegate is typically the validator operator party,
+   but could be another internal party on the validator node. Obtain this from the validator
+   operator.
+
+4. **Know the DSO party ID**: The DSO party ID for the network. This can be obtained from
+   the Scan API or from the validator operator.
+
+Example: Creating a Proposal
+""""""""""""""""""""""""""""
+
+The ``MintingDelegationProposal`` contract contains a ``delegation`` field with the same
+properties as described in the Overview section above (beneficiary, delegate, expiration,
+and amulet merge limit), plus the DSO party ID.
+
+All interaction works via the JSON Ledger API (see its
+`OpenAPI definition <https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml>`_).
+Check out the `Authentication docs <https://docs.digitalasset.com/operate/3.4/howtos/secure/apis/jwt.html>`_
+for more information on how to authenticate the requests.
+
+To create the proposal, submit a ``create`` command via the Ledger API
+`command submission endpoint <https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L173>`_
+with the following payload structure:
+
+.. code-block:: json
+
+   {
+     "commands": [
+       {
+         "CreateCommand": {
+           "templateId": "#splice-wallet:Splice.Wallet.MintingDelegation:MintingDelegationProposal",
+           "createArguments": {
+             "delegation": {
+               "beneficiary": "beneficiary::1220abcd...",
+               "delegate": "validator_operator::1220efgh...",
+               "dso": "DSO::1220ijkl...",
+               "expiresAt": "2025-12-31T23:59:59Z",
+               "amuletMergeLimit": 40
+             }
+           }
+         }
+       }
+     ]
+   }
+
+Where:
+
+- ``beneficiary`` is the party ID of the external party creating the proposal
+- ``delegate`` is the party ID of the validator operator (or other internal party)
+- ``dso`` is the DSO party ID for the network
+- ``expiresAt`` is the delegation expiration timestamp in ISO 8601 format
+- ``amuletMergeLimit`` is the suggested number of amulets to keep after auto-merging (recommended: 40)
+
+See the `MintingDelegationProposal template source code
+<https://github.com/hyperledger-labs/splice/blob/main/daml/splice-wallet/daml/Splice/Wallet/MintingDelegation.daml>`_
+for the complete Daml definition.
+
+After Proposal Creation
+"""""""""""""""""""""""
+
+Once the proposal is created:
+
+1. The proposal appears in the delegate's wallet UI under **Delegations > Proposed**
+2. The delegate reviews the proposal and either accepts or rejects it
+3. If accepted, an active ``MintingDelegation`` contract is created
+4. The validator's automation begins minting rewards on behalf of the beneficiary
+
+The beneficiary can monitor their proposal status by querying for active
+``MintingDelegationProposal`` contracts via the Ledger API's
+`active contracts endpoint <https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L620>`_.
+Once accepted, they can query for their ``MintingDelegation`` contract to confirm the
+delegation is active.
+
+Withdrawing a Proposal
+""""""""""""""""""""""
+
+If the beneficiary wants to withdraw their proposal before it is accepted or rejected,
+they can exercise the ``MintingDelegationProposal_Withdraw`` choice on their proposal
+contract via the Ledger API's
+`exercise endpoint <https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L173>`_.
+
+
 Security Considerations
 ^^^^^^^^^^^^^^^^^^^^^^^
 
