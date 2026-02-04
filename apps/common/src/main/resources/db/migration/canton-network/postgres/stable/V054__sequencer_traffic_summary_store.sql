@@ -28,6 +28,3 @@ create table sequencer_traffic_summary_store
 
 -- Index for efficient querying by history, migration and sequencing time
 create index sequencer_traffic_hi_mi_st on sequencer_traffic_summary_store (history_id, migration_id, sequencing_time);
-
--- GIN index for efficient view_hash lookups in correlation queries via JSONB path
-create index sequencer_traffic_envelopes_gin on sequencer_traffic_summary_store using gin (envelopes jsonb_path_ops);
