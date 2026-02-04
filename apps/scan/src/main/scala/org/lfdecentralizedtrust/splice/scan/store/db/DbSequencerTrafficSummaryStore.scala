@@ -153,14 +153,14 @@ class DbSequencerTrafficSummaryStore(
         $trafficCosts,
         $viewHashes
       )
-      on conflict (history_id, sequencing_time, sender) do nothing
+      on conflict (history_id, sequencing_time) do nothing
     """.asUpdate
   }
 
   /** Insert multiple traffic summaries in a single transaction.
     *
     * We use INSERT ... ON CONFLICT DO NOTHING to handle duplicates.
-    * Duplicates are identified by (history_id, sequencing_time, sender).
+    * Duplicates are identified by (history_id, sequencing_time).
     */
   def insertTrafficSummaries(
       items: Seq[TrafficSummaryT]
