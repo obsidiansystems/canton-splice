@@ -249,6 +249,30 @@ class DbSequencerTrafficSummaryStore(
     storage.query(query.toActionBuilder.as[TrafficSummaryRowT], "scanTraffic.listTrafficSummaries")
   }
 
+  /** Fetches traffic summaries with their envelopes in batch. */
+  def listTrafficSummariesWithEnvelopes(
+      afterO: Option[TimestampWithMigrationId],
+      limit: Int,
+  )(implicit tc: TraceContext): Future[Seq[TrafficSummaryT]] = {
+    for {
+      rows <- listTrafficSummaries(afterO, limit)
+      envelopesMap <- listEnvelopesForSummaries(rows.map(_.rowId))
+    } yield rows.map { row =>
+      val envelopes = envelopesMap.getOrElse(row.rowId, Seq.empty).map { e =>
+        EnvelopeT(e.trafficCost, e.viewHashes)
+      }
+      TrafficSummaryT(
+        rowId = row.rowId,
+        migrationId = row.migrationId,
+        domainId = row.domainId,
+        sequencingTime = row.sequencingTime,
+        sender = row.sender,
+        totalTrafficCost = row.totalTrafficCost,
+        envelopes = envelopes,
+      )
+    }
+  }
+
   private def afterFilters(
       afterO: Option[TimestampWithMigrationId]
   ): NonEmptyList[SQLActionBuilder] = {
@@ -309,6 +333,29 @@ class DbSequencerTrafficSummaryStore(
       """.as[EnvelopeRowT],
       "scanTraffic.listEnvelopes",
     )
+  }
+
+  /** Batch fetch envelopes for multiple traffic summaries. */
+  private def listEnvelopesForSummaries(rowIds: Seq[Long])(implicit
+      tc: TraceContext
+  ): Future[Map[Long, Seq[EnvelopeRowT]]] = {
+    if (rowIds.isEmpty) Future.successful(Map.empty)
+    else {
+      storage
+        .query(
+          (sql"""
+            select
+              traffic_summary_row_id,
+              envelope_index,
+              traffic_cost,
+              view_hashes
+            from #${Tables.envelopes}
+            where """ ++ inClause("traffic_summary_row_id", rowIds) ++
+            sql" order by traffic_summary_row_id, envelope_index asc").as[EnvelopeRowT],
+          "scanTraffic.listEnvelopesForSummaries",
+        )
+        .map(_.groupBy(_.trafficSummaryRowId))
+    }
   }
 
   def maxSequencingTime(migrationId: Long)(implicit
