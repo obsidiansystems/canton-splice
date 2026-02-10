@@ -128,6 +128,7 @@ class HttpScanHandler(
     snapshotStore: AcsSnapshotStore,
     eventStore: ScanEventStore,
     trafficStore: DbSequencerTrafficSummaryStore,
+    enableTrafficSummaries: Boolean,
     dsoAnsResolver: DsoAnsResolver,
     miningRoundsCacheTimeToLiveOverride: Option[NonNegativeFiniteDuration],
     enableForcedAcsSnapshots: Boolean,
@@ -932,18 +933,27 @@ class HttpScanHandler(
   ): Future[ScanResource.GetConfirmationRequestTrafficSummariesResponse] = {
     implicit val tc: TraceContext = extracted
     withSpan(s"$workflowId.getConfirmationRequestTrafficSummaries") { _ => _ =>
-      val afterO = request.after.map { a =>
-        val afterSequencingTime = CantonTimestamp.assertFromInstant(a.afterSequencingTime.toInstant)
-        TimestampWithMigrationId(afterSequencingTime, a.afterMigrationId)
-      }
-      for {
-        summaries <- trafficStore.listTrafficSummariesWithEnvelopes(
-          afterO = afterO,
-          limit = request.pageSize,
+      if (!enableTrafficSummaries) {
+        Future.successful(
+          ScanResource.GetConfirmationRequestTrafficSummariesResponse.BadRequest(
+            definitions.ErrorResponse("Traffic summaries endpoint is disabled.")
+          )
         )
-      } yield {
-        val encodedSummaries = summaries.map(ScanHttpEncodings.encodeTrafficSummary).toVector
-        definitions.ConfirmationRequestTrafficSummariesResponse(encodedSummaries)
+      } else {
+        val afterO = request.after.map { a =>
+          val afterSequencingTime =
+            CantonTimestamp.assertFromInstant(a.afterSequencingTime.toInstant)
+          TimestampWithMigrationId(afterSequencingTime, a.afterMigrationId)
+        }
+        for {
+          summaries <- trafficStore.listTrafficSummariesWithEnvelopes(
+            afterO = afterO,
+            limit = request.pageSize,
+          )
+        } yield {
+          val encodedSummaries = summaries.map(ScanHttpEncodings.encodeTrafficSummary).toVector
+          definitions.ConfirmationRequestTrafficSummariesResponse(encodedSummaries)
+        }
       }
     }
   }
