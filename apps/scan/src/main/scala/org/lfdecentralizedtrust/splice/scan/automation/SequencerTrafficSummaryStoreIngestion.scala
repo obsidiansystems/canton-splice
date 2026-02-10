@@ -138,6 +138,9 @@ class SequencerTrafficSummaryStoreIngestion(
               .flatMap(s => CantonTimestamp.fromProtoTimestamp(s.getSequencingTime).toOption)
               .getOrElse(CantonTimestamp.MinValue)
             ingestionMetrics.lastIngestedSequencingTime.updateValue(lastSequencingTime)
+            val now = context.clock.now
+            val lagMs = (now.toMicros - lastSequencingTime.toMicros) / 1000
+            ingestionMetrics.ingestionLag.updateValue(lagMs)
             ingestionMetrics.summaryCount.mark(batch.size.toLong)(MetricsContext.Empty)
             Success(
               TaskSuccess(

@@ -23,6 +23,16 @@ class ScanSequencerTrafficIngestionMetrics(metricsFactory: LabeledMetricsFactory
     initial = CantonTimestamp.MinValue,
   )(MetricsContext.Empty)
 
+  val ingestionLag: Gauge[Long] = metricsFactory.gauge(
+    MetricInfo(
+      name = prefix :+ "lag_ms",
+      summary = "Ingestion lag in milliseconds",
+      description = "Measures propagation delay; indicates the client is behind and by how much",
+      qualification = Traffic,
+    ),
+    0L,
+  )(MetricsContext.Empty)
+
   val summaryCount: Meter = metricsFactory.meter(
     MetricInfo(
       name = prefix :+ "count",
@@ -49,5 +59,6 @@ class ScanSequencerTrafficIngestionMetrics(metricsFactory: LabeledMetricsFactory
 
   override def close(): Unit = {
     lastIngestedSequencingTime.close()
+    ingestionLag.close()
   }
 }
