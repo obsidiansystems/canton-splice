@@ -21,6 +21,7 @@ import org.lfdecentralizedtrust.splice.scan.store.db.DbScanVerdictStore.{
   VerdictResultDbValue,
   VerdictT,
 }
+import org.lfdecentralizedtrust.splice.scan.store.db.DbSequencerTrafficSummaryStore.TrafficSummaryT
 import org.lfdecentralizedtrust.splice.store.TreeUpdateWithMigrationId
 import org.lfdecentralizedtrust.splice.store.UpdateHistory.UpdateHistoryResponse
 import org.lfdecentralizedtrust.splice.util.{Codec, Contract, EventId, LegacyOffset, Trees}
@@ -499,6 +500,26 @@ object ScanHttpEncodings {
       verdictResult = verdictResultEnum,
       mediatorGroup = verdict.mediatorGroup,
       transactionViews = txViews,
+    )
+  }
+
+  def encodeTrafficSummary(
+      summary: TrafficSummaryT
+  ): definitions.ConfirmationRequestTrafficSummary = {
+    val envelopes = summary.envelopes.map { e =>
+      definitions.ViewEnvelopeTrafficSummary(
+        envelopeTrafficCost = e.trafficCost,
+        viewHashes = e.viewHashes.toVector,
+      )
+    }.toVector
+
+    definitions.ConfirmationRequestTrafficSummary(
+      migrationId = summary.migrationId,
+      domainId = Codec.encode(summary.domainId),
+      sequencingTime = summary.sequencingTime.toInstant.atOffset(ZoneOffset.UTC),
+      sender = summary.sender,
+      totalTrafficCost = summary.totalTrafficCost,
+      envelopes = envelopes,
     )
   }
 
