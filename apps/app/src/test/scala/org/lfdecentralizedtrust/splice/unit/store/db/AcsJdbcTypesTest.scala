@@ -115,6 +115,7 @@ class AcsJdbcTypesTest
         )
       } yield result.toSeq should contain theSameElementsAs value
     }
+
   }
 
   case class TestRow(

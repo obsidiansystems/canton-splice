@@ -1600,6 +1600,38 @@ paths:
         "500":
           $ref: "../../../../common/src/main/openapi/common-external.yaml#/components/responses/500"
 
+  /v0/confirmation-request-traffic-summaries:
+    post:
+      tags: [external, scan]
+      x-jvm-package: scan
+      operationId: "getConfirmationRequestTrafficSummaries"
+      description: |
+        **EXPERIMENTAL**: This endpoint is experimental and subject to change. Data may be incomplete or missing.
+
+        Returns confirmation request traffic summaries in ascending order, paged, from ledger begin or optionally starting after a sequencing time.
+        Traffic summaries are ordered lexicographically by `(migration id, sequencing time)`.
+        For a given migration id, each summary has a unique sequencing time.
+        The sequencing time ranges of different migrations may overlap, i.e.,
+        it is not guaranteed that the maximum sequencing time of one migration is smaller than the minimum sequencing time of the next migration,
+        and there may be two summaries with the same sequencing time but different migration ids.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ConfirmationRequestTrafficSummariesRequest"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmationRequestTrafficSummariesResponse"
+        "400":
+          $ref: "../../../../common/src/main/openapi/common-external.yaml#/components/responses/400"
+        "500":
+          $ref: "../../../../common/src/main/openapi/common-external.yaml#/components/responses/500"
+
   /v0/unclaimed-development-fund-coupons:
     get:
       tags: [ external, scan ]
@@ -3733,6 +3765,107 @@ components:
         verdict:
           $ref: "#/components/schemas/EventHistoryVerdict"
           nullable: true
+    ConfirmationRequestTrafficSummariesRequest:
+      type: object
+      required:
+        - page_size
+      properties:
+        after:
+          $ref: "#/components/schemas/TrafficSummariesRequestAfter"
+          description: |
+            The summaries returned will either have a higher migration id or
+            the same migration id and a sequencing_time greater than the migration id and sequencing time
+            specified.
+        page_size:
+          description: |
+            The maximum number of summaries returned for this request.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 1000
+    TrafficSummariesRequestAfter:
+      type: object
+      required:
+        - after_migration_id
+        - after_sequencing_time
+      properties:
+        after_migration_id:
+          type: integer
+          format: int64
+          description: |
+            The migration id from which to start returning summaries. This is inclusive.
+        after_sequencing_time:
+          type: string
+          format: date-time
+          description: |
+            The sequencing time to start returning summaries from. This only affects
+            summaries with the same migration id as after_migration_id. Higher migration ids
+            are always considered to be later.
+    ConfirmationRequestTrafficSummariesResponse:
+      type: object
+      required:
+        - summaries
+      properties:
+        summaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConfirmationRequestTrafficSummary"
+    ConfirmationRequestTrafficSummary:
+      type: object
+      required:
+        - migration_id
+        - domain_id
+        - sequencing_time
+        - sender
+        - total_traffic_cost
+        - envelopes
+      properties:
+        migration_id:
+          description: |
+            The migration id of the domain through which this confirmation request was sequenced.
+          type: integer
+          format: int64
+        domain_id:
+          description: |
+            The id of the domain through which this confirmation request was sequenced.
+          type: string
+        sequencing_time:
+          description: |
+            The time at which the confirmation request was sequenced.
+          type: string
+          format: date-time
+        sender:
+          description: |
+            The sender of the message, typically the participant id of the validator node that sent this confirmation request.
+          type: string
+        total_traffic_cost:
+          description: |
+            Total traffic cost of the message which was paid by the sender.
+          type: integer
+          format: int64
+        envelopes:
+          description: |
+            Summary of traffic cost of envelopes having at least one view.
+          type: array
+          items:
+            $ref: "#/components/schemas/ViewEnvelopeTrafficSummary"
+    ViewEnvelopeTrafficSummary:
+      type: object
+      required:
+        - envelope_traffic_cost
+        - view_hashes
+      properties:
+        envelope_traffic_cost:
+          description: |
+            Traffic cost of the envelope.
+          type: integer
+          format: int64
+        view_hashes:
+          description: |
+            Hashes of the views included in the envelope.
+          type: array
+          items:
+            type: string
     EventHistoryVerdict:
       type: object
       required:
