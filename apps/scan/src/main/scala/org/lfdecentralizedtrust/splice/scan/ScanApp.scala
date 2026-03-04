@@ -37,10 +37,19 @@ import org.lfdecentralizedtrust.splice.scan.automation.{
   ScanAutomationService,
   ScanVerdictAutomationService,
 }
+import org.lfdecentralizedtrust.splice.scan.rewards.NoOpAppActivityComputation
 import org.lfdecentralizedtrust.splice.scan.config.ScanAppBackendConfig
 import org.lfdecentralizedtrust.splice.scan.metrics.ScanAppMetrics
-import org.lfdecentralizedtrust.splice.scan.store.{AcsSnapshotStore, ScanEventStore, ScanStore}
+import org.lfdecentralizedtrust.splice.scan.store.{
+  AcsSnapshotStore,
+  ScanEventStore,
+  ScanKeyValueProvider,
+  ScanKeyValueStore,
+  ScanStore,
+}
+import org.lfdecentralizedtrust.splice.scan.sequencer.SequencerTrafficClient
 import org.lfdecentralizedtrust.splice.scan.store.db.{
+  DbAppActivityRecordStore,
   DbScanVerdictStore,
   ScanAggregatesReader,
   ScanAggregatesReaderContext,
@@ -69,6 +78,8 @@ import org.apache.pekko.http.cors.scaladsl.settings.CorsSettings
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import org.apache.pekko.stream.Materializer
 import org.lfdecentralizedtrust.splice.http.HttpRateLimiter
+import org.lfdecentralizedtrust.splice.scan.config.ScanStorageConfigs.scanStorageConfigV1
+import org.lfdecentralizedtrust.splice.scan.store.bulk.BulkStorage
 import org.lfdecentralizedtrust.splice.store.UpdateHistory.BackfillingRequirement
 
 /** Class representing a Scan app instance.
@@ -234,7 +245,45 @@ class ScanApp(
         amuletAppParameters.upgradesConfig,
         initialRound.toLong,
       )
-      scanVerdictStore = DbScanVerdictStore(storage, updateHistory, loggerFactory)(ec)
+      kvStore <- ScanKeyValueStore(dsoParty, participantId, storage, loggerFactory)
+      kvProvider = new ScanKeyValueProvider(kvStore, loggerFactory)
+      bulkStorage = new BulkStorage(
+        scanStorageConfigV1,
+        config.bulkStorage,
+        acsSnapshotStore,
+        updateHistory,
+        currentMigrationId = migrationInfo.currentMigrationId,
+        kvProvider,
+        retryProvider.metricsFactory,
+        loggerFactory,
+      )
+      // Conditionally create traffic summary ingestion dependencies
+      sequencerTrafficClientO =
+        if (config.sequencerTrafficIngestion.enabled) {
+          Some(
+            new SequencerTrafficClient(
+              config.sequencerAdminClient,
+              ScanApp.this,
+              nodeMetrics.grpcClientMetrics,
+              loggerFactory,
+            )
+          )
+        } else None
+      appActivityRecordStoreO =
+        if (config.sequencerTrafficIngestion.enabled) {
+          Some(
+            new DbAppActivityRecordStore(
+              storage,
+              loggerFactory,
+            )
+          )
+        } else None
+      scanVerdictStore = DbScanVerdictStore(
+        storage,
+        updateHistory,
+        appActivityRecordStoreO,
+        loggerFactory,
+      )(ec)
       scanEventStore = new ScanEventStore(
         scanVerdictStore,
         updateHistory,
@@ -282,6 +331,7 @@ class ScanApp(
         appInitConnection,
         loggerFactory,
       )
+      appActivityComputation = NoOpAppActivityComputation
       verdictAutomation = new ScanVerdictAutomationService(
         config,
         clock,
@@ -292,6 +342,8 @@ class ScanApp(
         migrationInfo.currentMigrationId,
         synchronizerId,
         nodeMetrics.verdictIngestion,
+        sequencerTrafficClientO,
+        appActivityComputation,
       )
       scanHandler = new HttpScanHandler(
         serviceUserPrimaryParty,
@@ -416,6 +468,7 @@ class ScanApp(
         storage,
         store,
         automation,
+        bulkStorage,
         verdictAutomation,
         scanEventStore,
         loggerFactory.getTracedLogger(ScanApp.State.getClass),
@@ -439,6 +492,7 @@ object ScanApp {
       storage: Storage,
       store: ScanStore,
       automation: ScanAutomationService,
+      bulkStorage: BulkStorage,
       verdictAutomation: ScanVerdictAutomationService,
       eventStore: ScanEventStore,
       logger: TracedLogger,
@@ -454,6 +508,7 @@ object ScanApp {
       LifeCycle.close(bftSequencersAdminConnections*)(logger)
       LifeCycle.close(cleanups*)(logger)
       LifeCycle.close(
+        bulkStorage,
         automation,
         verdictAutomation,
         store,

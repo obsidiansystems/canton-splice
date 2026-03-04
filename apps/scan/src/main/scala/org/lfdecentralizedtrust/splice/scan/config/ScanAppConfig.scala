@@ -9,6 +9,7 @@ import org.lfdecentralizedtrust.splice.config.{
   HttpClientConfig,
   NetworkAppClientConfig,
   ParticipantClientConfig,
+  S3Config,
   SpliceBackendConfig,
   SpliceInstanceNamesConfig,
   SpliceParametersConfig,
@@ -37,15 +38,12 @@ final case class BulkStorageConfig(
     updatesPollingInterval: NonNegativeFiniteDuration = NonNegativeFiniteDuration.ofSeconds(30),
     // The maximum parallelization for uploading multiple parts of the same object
     maxParallelPartUploads: Int = 4,
-    s3config: Option[S3Config] = None,
+    s3: Option[S3Config] = None,
 )
 
-final case class S3Config(
-    endpoint: String,
-    bucketName: String,
-    region: String,
-    accessKeyId: String,
-    secretAccessKey: String,
+final case class SequencerTrafficIngestionConfig(
+    /** Whether sequencer traffic ingestion is enabled. */
+    enabled: Boolean = false
 )
 
 /** @param miningRoundsCacheTimeToLiveOverride Intended only for testing!
@@ -60,6 +58,7 @@ case class ScanAppBackendConfig(
     mediatorAdminClient: FullClientConfig,
     override val automation: AutomationConfig = AutomationConfig(),
     mediatorVerdictIngestion: MediatorVerdictIngestionConfig = MediatorVerdictIngestionConfig(),
+    sequencerTrafficIngestion: SequencerTrafficIngestionConfig = SequencerTrafficIngestionConfig(),
     isFirstSv: Boolean = false,
     miningRoundsCacheTimeToLiveOverride: Option[NonNegativeFiniteDuration] = None,
     enableForcedAcsSnapshots: Boolean = false,
@@ -76,7 +75,7 @@ case class ScanAppBackendConfig(
     cache: ScanCacheConfig = ScanCacheConfig(),
     acsStoreDescriptorUserVersion: Option[Long] = None,
     txLogStoreDescriptorUserVersion: Option[Long] = None,
-    bulkStorageConfig: BulkStorageConfig = BulkStorageConfig(),
+    bulkStorage: BulkStorageConfig = BulkStorageConfig(),
 ) extends SpliceBackendConfig
     with BaseScanAppConfig // TODO(DACH-NY/canton-network-node#736): fork or generalize this trait.
     {
