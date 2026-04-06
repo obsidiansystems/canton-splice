@@ -9,10 +9,12 @@ import org.lfdecentralizedtrust.splice.codegen.java.splice.api.token.{
 }
 import org.lfdecentralizedtrust.splice.console.WalletAppClientReference
 import org.lfdecentralizedtrust.splice.codegen.java.splice.testing.apps.tradingapp
+import org.lfdecentralizedtrust.splice.config.ConfigTransforms
 import org.lfdecentralizedtrust.splice.config.ConfigTransforms.{
   ConfigurableApp,
   updateAutomationConfig,
 }
+import org.lfdecentralizedtrust.splice.sv.config.InitialRewardConfig
 import org.lfdecentralizedtrust.splice.http.v0.definitions
 import definitions.DamlValueEncoding.members.CompactJson
 import org.lfdecentralizedtrust.splice.integration.EnvironmentDefinition
@@ -60,6 +62,13 @@ class TrafficBasedRewardsTimeBasedIntegrationTest
       .addConfigTransforms((_, config) =>
         updateAutomationConfig(ConfigurableApp.Scan)(
           _.withPausedTrigger[RewardComputationTrigger]
+        )(config)
+      )
+      .addConfigTransform((_, config) =>
+        ConfigTransforms.withRewardConfig(
+          InitialRewardConfig(
+            dryRunVersion = Some("RewardVersion_TrafficBasedAppRewards")
+          )
         )(config)
       )
 
