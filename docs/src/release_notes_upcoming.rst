@@ -26,6 +26,8 @@
 
     - Validator app
 
+      - Added support for ``bft-custom`` scan and sequencer configurations in Docker Compose based validator deployment.
+
       - Stop recording update history. This data was never exposed
         beyond undocumented SQL tables so there should be no effect
         other than the database growing at a slower rate.
