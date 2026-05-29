@@ -746,7 +746,7 @@ object SvApp {
   ) extends FlagCloseableAsync
       with HasHealth {
     override def isHealthy: Boolean =
-      storage.isActive && svAutomation.isHealthy && dsoAutomation.isHealthy
+      storage.isActive
 
     override def closeAsync(): Seq[AsyncOrSyncCloseable] =
       Seq(

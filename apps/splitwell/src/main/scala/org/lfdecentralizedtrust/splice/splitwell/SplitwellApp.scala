@@ -254,7 +254,7 @@ object SplitwellApp {
       timeouts: ProcessingTimeout,
   ) extends AutoCloseable
       with HasHealth {
-    override def isHealthy: Boolean = storage.isActive && automation.isHealthy
+    override def isHealthy: Boolean = storage.isActive
 
     override def close(): Unit =
       LifeCycle.close(

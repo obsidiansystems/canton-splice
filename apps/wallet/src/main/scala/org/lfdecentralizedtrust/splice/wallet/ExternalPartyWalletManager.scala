@@ -3,13 +3,6 @@
 
 package org.lfdecentralizedtrust.splice.wallet
 
-import org.apache.pekko.stream.Materializer
-import org.lfdecentralizedtrust.splice.config.{AutomationConfig, SpliceParametersConfig}
-import org.lfdecentralizedtrust.splice.environment.{RetryProvider, SpliceLedgerClient}
-import org.lfdecentralizedtrust.splice.scan.admin.api.client.BftScanConnection
-import org.lfdecentralizedtrust.splice.store.{DomainTimeSynchronization, LimitHelpers}
-import org.lfdecentralizedtrust.splice.util.{HasHealth, TemplateJsonDecoder}
-import org.lfdecentralizedtrust.splice.wallet.store.{ExternalPartyWalletStore, WalletStore}
 import com.digitalasset.canton.lifecycle.*
 import com.digitalasset.canton.logging.{NamedLoggerFactory, NamedLogging}
 import com.digitalasset.canton.resource.DbStorage
@@ -19,6 +12,13 @@ import com.digitalasset.canton.tracing.TraceContext
 import com.digitalasset.canton.util.Mutex
 import com.digitalasset.canton.util.ShowUtil.*
 import io.opentelemetry.api.trace.Tracer
+import org.apache.pekko.stream.Materializer
+import org.lfdecentralizedtrust.splice.config.{AutomationConfig, SpliceParametersConfig}
+import org.lfdecentralizedtrust.splice.environment.{RetryProvider, SpliceLedgerClient}
+import org.lfdecentralizedtrust.splice.scan.admin.api.client.BftScanConnection
+import org.lfdecentralizedtrust.splice.store.{DomainTimeSynchronization, LimitHelpers}
+import org.lfdecentralizedtrust.splice.util.TemplateJsonDecoder
+import org.lfdecentralizedtrust.splice.wallet.store.{ExternalPartyWalletStore, WalletStore}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{blocking, ExecutionContext}
@@ -46,7 +46,6 @@ class ExternalPartyWalletManager(
     closeContext: CloseContext,
 ) extends AutoCloseable
     with NamedLogging
-    with HasHealth
     with LimitHelpers {
 
   // map from externalParty party to external party wallet service
@@ -170,8 +169,6 @@ class ExternalPartyWalletManager(
     )
     (externalPartyRetryProvider, walletService)
   }
-
-  override def isHealthy: Boolean = externalPartyWalletsMap.values.forall(_._2.isHealthy)
 
   override def close(): Unit = LifeCycle.close(
     // per-party retry providers should have been closed by the shutdown signal, so only closing the services here
