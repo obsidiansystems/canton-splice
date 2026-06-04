@@ -284,6 +284,19 @@ class ScanApp(
       appRewardsStoreO = appActivityRecordStoreO.map(appActivityRecordStore =>
         new DbScanAppRewardsStore(storage, updateHistory, appActivityRecordStore, loggerFactory)
       )
+      synchronizerId <-
+        retryProvider.getValueWithRetries(
+          RetryFor.WaitingOnInitDependency,
+          "synchronizer id",
+          "synchronizer id from participant",
+          participantAdminConnection.getSynchronizerId(config.globalSynchronizerAlias),
+          logger,
+        )
+      packageVersionSupport = PackageVersionSupport.createPackageVersionSupport(
+        synchronizerId,
+        appInitConnection,
+        loggerFactory,
+      )
       automation = new ScanAutomationService(
         config,
         clock,
@@ -299,6 +312,7 @@ class ScanApp(
         serviceUserPrimaryParty,
         svName,
         amuletAppParameters.upgradesConfig,
+        packageVersionSupport,
       )
       scanVerdictStore = DbScanVerdictStore(
         storage,
@@ -332,22 +346,6 @@ class ScanApp(
         dsoParty,
         config.spliceInstanceNames.nameServiceNameAcronym.toLowerCase(),
       )
-      synchronizerId <- appInitStep("Get synchronizer id") {
-        retryProvider.getValueWithRetries(
-          RetryFor.WaitingOnInitDependency,
-          "amulet synchronizer id",
-          "amulet rules synchronizer id",
-          store.getAmuletRulesWithState().map {
-            _.state.fold(
-              identity,
-              throw Status.FAILED_PRECONDITION
-                .withDescription("Amulet rules in fllight")
-                .asRuntimeException(),
-            )
-          },
-          logger,
-        )
-      }
       _ <- config.domainMigrationId match {
         case Some(configuredMigrationId) =>
           appInitStep("Verifying configured domain migration id is in sync with other scans") {
@@ -364,11 +362,6 @@ class ScanApp(
         case None =>
           Future.unit
       }
-      packageVersionSupport = PackageVersionSupport.createPackageVersionSupport(
-        synchronizerId,
-        appInitConnection,
-        loggerFactory,
-      )
       rewardsReferenceStoreO =
         if (config.enableAppActivityRecordAndTrafficIngestion) {
           val rewardsStore = ScanRewardsReferenceStore(
