@@ -864,7 +864,13 @@ object BftScanConnection {
               (_, scans) => scan.url :: Option(scans).getOrElse(List.empty),
             )
 
-          if (agreements.size == nTargetSuccess) { // consensus has been reached
+          // In the special case of nTargetSuccess == 1, ignore error responses
+          // Otherwise a single HTTP error or network failure would prevent reading the responses from others
+          val considerResponseForQuorum = key match {
+            case _: ExceptionFailureResponse[?] => !(nTargetSuccess == 1 && requestFrom.size != 1)
+            case _ => true
+          }
+          if (considerResponseForQuorum && agreements.size == nTargetSuccess) { // consensus has been reached
             finalResponse.tryComplete(response): Unit
           }
 
