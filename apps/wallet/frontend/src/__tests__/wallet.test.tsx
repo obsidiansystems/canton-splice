@@ -3,7 +3,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse, PathParams } from 'msw';
-import { LookupTransferPreapprovalByPartyResponse } from '@lfdecentralizedtrust/scan-openapi';
+import { LookupTransferPreapprovalByPartyResponse } from '@canton-network/scan-openapi';
 import { test, expect, describe } from 'vitest';
 import { vi } from 'vitest';
 import * as jtv from '@mojotech/json-type-validation';
@@ -39,7 +39,7 @@ import {
   ChoiceExecutionMetadata,
   ListAllocationRequestsResponse,
   ListAllocationsResponse,
-} from '@lfdecentralizedtrust/wallet-openapi';
+} from '@canton-network/wallet-openapi';
 import { AllocationRequest as AllocationRequestV1 } from '@daml.js/splice-api-token-allocation-request/lib/Splice/Api/Token/AllocationRequestV1/module';
 import { AllocationRequest as AllocationRequestV2 } from '@daml.js/splice-api-token-allocation-request-v2/lib/Splice/Api/Token/AllocationRequestV2/module';
 import { mkContract } from './mocks/contract';
@@ -53,7 +53,7 @@ import { ContractId, Optional, Text } from '@daml/types';
 import { AnyContract } from '@daml.js/splice-api-token-metadata/lib/Splice/Api/Token/MetadataV1/module';
 import { AmuletAllocationV2 } from '@daml.js/splice-amulet/lib/Splice/AmuletAllocationV2';
 import { AmuletAllocation as AmuletAllocationV1 } from '@daml.js/splice-amulet/lib/Splice/AmuletAllocation';
-import { Contract } from '@lfdecentralizedtrust/splice-common-frontend-utils';
+import { Contract } from '@canton-network/splice-common-frontend-utils';
 import { LockedAmulet } from '@daml.js/splice-amulet/lib/Splice/Amulet';
 import { TransferSide } from '@daml.js/splice-api-token-allocation-v2-1.0.0/lib/Splice/Api/Token/AllocationV2';
 

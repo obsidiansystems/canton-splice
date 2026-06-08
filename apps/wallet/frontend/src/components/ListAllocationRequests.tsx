@@ -4,9 +4,9 @@ import React from 'react';
 import { Button, Card, CardContent, Chip, Stack } from '@mui/material';
 import Typography from '@mui/material/Typography';
 import { useTokenStandardAllocationRequests } from '../hooks/useTokenStandardAllocationRequests';
-import { DisableConditionally, Loading } from '@lfdecentralizedtrust/splice-common-frontend';
+import { DisableConditionally, Loading } from '@canton-network/splice-common-frontend';
 import { AllocationRequest as AllocationRequestV1 } from '@daml.js/splice-api-token-allocation-request/lib/Splice/Api/Token/AllocationRequestV1/module';
-import { Contract } from '@lfdecentralizedtrust/splice-common-frontend-utils';
+import { Contract } from '@canton-network/splice-common-frontend-utils';
 import { AmuletAllocation as AmuletAllocationV1 } from '@daml.js/splice-amulet/lib/Splice/AmuletAllocation';
 import { AmuletAllocationV2 } from '@daml.js/splice-amulet/lib/Splice/AmuletAllocationV2';
 import { usePrimaryParty } from '../hooks';
@@ -25,7 +25,7 @@ import { useMutation } from '@tanstack/react-query';
 import {
   AllocateAmuletRequest,
   AllocateAmuletV2Request,
-} from '@lfdecentralizedtrust/wallet-openapi';
+} from '@canton-network/wallet-openapi';
 import {
   AllocationSpecification as AllocationSpecificationV2,
   SettlementInfo,

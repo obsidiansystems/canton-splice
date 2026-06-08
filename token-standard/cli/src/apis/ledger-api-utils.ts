@@ -23,8 +23,8 @@ import {
   ServerConfiguration,
   TransactionFilter,
   JsGetEventsByContractIdResponse,
-} from "@lfdecentralizedtrust/canton-json-api-v2-openapi";
-import { DisclosedContract } from "@lfdecentralizedtrust/transfer-instruction-openapi";
+} from "@canton-network/canton-json-api-v2-openapi";
+import { DisclosedContract } from "@canton-network/transfer-instruction-openapi";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import crypto from "crypto";

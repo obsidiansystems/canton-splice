@@ -15,7 +15,7 @@ import Typography from '@mui/material/Typography';
 import BftAnsEntry from './BftAnsEntry';
 import { AllocationSpecification } from '@daml.js/splice-api-token-allocation-v2/lib/Splice/Api/Token/AllocationV2/module';
 import BigNumber from 'bignumber.js';
-import { DateWithDurationDisplay } from '@lfdecentralizedtrust/splice-common-frontend';
+import { DateWithDurationDisplay } from '@canton-network/splice-common-frontend';
 import { TextMapDisplay } from './TextMap';
 
 const AllocationSpecificationDisplay: React.FC<{

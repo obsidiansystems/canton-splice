@@ -1614,31 +1614,31 @@ lazy val `apps-common-frontend` = {
             BuildCommon.TS.runWorkspaceCommand(
               npmRootDir.value,
               "build",
-              "@lfdecentralizedtrust/splice-common-frontend-utils",
+              "@canton-network/splice-common-frontend-utils",
               log,
             )
             BuildCommon.TS.runWorkspaceCommand(
               npmRootDir.value,
               "build",
-              "@lfdecentralizedtrust/splice-common-test-utils",
+              "@canton-network/splice-common-test-utils",
               log,
             )
             BuildCommon.TS.runWorkspaceCommand(
               npmRootDir.value,
               "build",
-              "@lfdecentralizedtrust/splice-common-test-handlers",
+              "@canton-network/splice-common-test-handlers",
               log,
             )
             BuildCommon.TS.runWorkspaceCommand(
               npmRootDir.value,
               "build",
-              "@lfdecentralizedtrust/splice-common-test-vite-utils",
+              "@canton-network/splice-common-test-vite-utils",
               log,
             )
             BuildCommon.TS.runWorkspaceCommand(
               npmRootDir.value,
               "build",
-              "@lfdecentralizedtrust/splice-common-frontend",
+              "@canton-network/splice-common-frontend",
               log,
             )
             (baseDirectory.value / "lib" ** "*").get.toSet
@@ -1674,11 +1674,11 @@ lazy val `apps-common-frontend` = {
         npmInstall.value
         for (
           workspace <- Seq(
-            "@lfdecentralizedtrust/splice-common-test-vite-utils",
-            "@lfdecentralizedtrust/splice-common-frontend-utils",
-            "@lfdecentralizedtrust/splice-common-test-utils",
-            "@lfdecentralizedtrust/splice-common-test-handlers",
-            "@lfdecentralizedtrust/splice-common-frontend",
+            "@canton-network/splice-common-test-vite-utils",
+            "@canton-network/splice-common-frontend-utils",
+            "@canton-network/splice-common-test-utils",
+            "@canton-network/splice-common-test-handlers",
+            "@canton-network/splice-common-frontend",
           )
         )
           BuildCommon.TS.runWorkspaceCommand(npmRootDir.value, "build", workspace, log)
@@ -1721,7 +1721,7 @@ lazy val `apps-wallet-frontend` = {
     .dependsOn(`apps-common-frontend`)
     .settings(
       commonFrontendBundle := (`apps-common-frontend` / bundle).value._2,
-      frontendWorkspace := "@lfdecentralizedtrust/splice-wallet-frontend",
+      frontendWorkspace := "@canton-network/splice-wallet-frontend",
       sharedFrontendSettings,
     )
 }
@@ -1732,7 +1732,7 @@ lazy val `apps-scan-frontend` = {
     .dependsOn(`apps-common-frontend`)
     .settings(
       commonFrontendBundle := (`apps-common-frontend` / bundle).value._2,
-      frontendWorkspace := "@lfdecentralizedtrust/splice-scan-frontend",
+      frontendWorkspace := "@canton-network/splice-scan-frontend",
       sharedFrontendSettings,
       npmInstallOpenApiDeps := Seq(
         (
@@ -1750,7 +1750,7 @@ lazy val `apps-splitwell-frontend` = {
     .dependsOn(`apps-common-frontend`)
     .settings(
       commonFrontendBundle := (`apps-common-frontend` / bundle).value._2,
-      frontendWorkspace := "@lfdecentralizedtrust/splice-splitwell-frontend",
+      frontendWorkspace := "@canton-network/splice-splitwell-frontend",
       sharedFrontendSettings,
     )
 }
@@ -1761,7 +1761,7 @@ lazy val `apps-ans-frontend` = {
     .dependsOn(`apps-common-frontend`)
     .settings(
       commonFrontendBundle := (`apps-common-frontend` / bundle).value._2,
-      frontendWorkspace := "@lfdecentralizedtrust/splice-ans-frontend",
+      frontendWorkspace := "@canton-network/splice-ans-frontend",
       sharedFrontendSettings,
     )
 }
@@ -1772,7 +1772,7 @@ lazy val `apps-sv-frontend` = {
     .dependsOn(`apps-common-frontend`)
     .settings(
       commonFrontendBundle := (`apps-common-frontend` / bundle).value._2,
-      frontendWorkspace := "@lfdecentralizedtrust/splice-sv-frontend",
+      frontendWorkspace := "@canton-network/splice-sv-frontend",
       sharedFrontendSettings,
     )
 }
@@ -2214,7 +2214,7 @@ checkErrors := {
     val ignorePatternsFilenames = ignorePatterns.map(ignorePatternsFilename)
     val cmd =
       Seq(
-        "splice-shared-gha/.github/actions/scripts/check-logs.sh",
+        ".github/actions/scripts/check-logs.sh",
         logFileName,
       ) ++ ignorePatternsFilenames
     if (cmd.! != 0) {
@@ -2232,7 +2232,7 @@ checkErrors := {
 
     // Note that this will split the given file and then delete it, so it is idempotent.
     Seq(
-      "splice-shared-gha/.github/actions/scripts/split-canton-logs.sh",
+      ".github/actions/scripts/split-canton-logs.sh",
       logFile,
       logFileBefore,
       logFileAfter,
