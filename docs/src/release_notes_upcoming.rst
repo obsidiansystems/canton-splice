@@ -7,6 +7,15 @@
 
 .. release-notes:: Upcoming
 
+      - Deployment
+
+          - Helm
+
+              - Added support for `secretOverrides` for Helm charts,
+                allowing node operators to inject raw configuration strings for external secret managers like HashiCorp Vault.
+                To use this, you must have the corresponding mutating webhook, injector, or tool hook installed in your cluster
+                to dynamically resolve raw string references at runtime.
+
       - PostgreSQL Data Checksums
 
           - `PostgreSQL data checksums <https://www.postgresql.org/docs/14/checksums.html>`_ are now
