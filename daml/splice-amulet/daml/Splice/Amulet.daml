@@ -11,6 +11,8 @@ import DA.List (unique)
 import DA.Map as Map
 import DA.TextMap as TextMap
 import DA.Optional (fromOptional, isNone, optionalToList)
+import DA.Time
+import DA.Numeric
 
 import Splice.Api.Token.MetadataV1 qualified as Api.Token.MetadataV1
 import Splice.Api.Token.HoldingV1 qualified as Api.Token.HoldingV1
@@ -677,3 +679,31 @@ instance HasCheckedFetch DevelopmentFundCoupon ForOwner where
 
 instance HasCheckedFetch DevelopmentFundCoupon ForDso where
   contractGroupId DevelopmentFundCoupon{..} = ForDso with dso
+
+calculateAvailableWithdrawAmount : Time -> VestedAmulet -> Decimal
+calculateAvailableWithdrawAmount currentDateTime VestedAmulet{..} = let
+    totalVestedAmulet : Numeric 37 = castAndRound $ aggregateLockedAmulet.amount.initialAmount + withdrawnAmount
+  in if currentDateTime >= endDate
+  then (castAndRound totalVestedAmulet) - withdrawnAmount
+  else
+    let totalUnlockPeriod : Numeric 0 = intToNumeric . convertRelTimeToMicroseconds $ subTime endDate startDate
+        unlockPeriodElapsed : Numeric 0 = intToNumeric . convertRelTimeToMicroseconds $ subTime currentDateTime startDate
+        totalVestedPercentageElapsed : Numeric 37 = max 1.0 $ div unlockPeriodElapsed totalUnlockPeriod
+    in (castAndRound $ totalVestedAmulet * totalVestedPercentageElapsed) - withdrawnAmount
+
+template VestedAmulet
+  with
+    aggregateLockedAmulet : Amulet
+    startDate : Time
+    endDate : Time
+    withdrawnAmount : Decimal
+  where
+    signatory aggregateLockedAmulet.dso, aggregateLockedAmulet.owner
+
+    nonconsuming choice VestedAmulet_WithdrawAvailableUnlockedAmulet : Decimal
+      controller aggregateLockedAmulet.owner8
+        do
+          now <- getTime
+          let currentEligibleWithdrawableAmount = calculateAvailableWithdrawAmount now this
+
+          pure currentEligibleWithdrawableAmount

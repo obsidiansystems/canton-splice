@@ -62,3 +62,12 @@ testLocking = do
       exerciseCmd lockedCid2 LockedAmulet_OwnerExpireLockV2
 
   pure ()
+
+testVesting : Script ()
+testVesting = do
+  DefaultAppWithUsers{..} <- setupDefaultAppWithUsers
+  now <- getTime
+
+  amuletCid <- tap app alice 3652.5
+
+  pure ()
