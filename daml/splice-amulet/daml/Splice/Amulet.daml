@@ -10,6 +10,7 @@ import DA.Assert
 import DA.List (unique)
 import DA.Map as Map
 import DA.TextMap as TextMap
+import qualified DA.Text as T (implode)
 import DA.Optional (fromOptional, isNone, optionalToList)
 import DA.Time
 import DA.Numeric
@@ -700,10 +701,36 @@ template VestedAmulet
   where
     signatory aggregateLockedAmulet.dso, aggregateLockedAmulet.owner
 
-    nonconsuming choice VestedAmulet_WithdrawAvailableUnlockedAmulet : Decimal
-      controller aggregateLockedAmulet.owner8
+    choice VestedAmulet_WithdrawAvailableUnlockedAmulet : (Amulet) -- TODO: Make custom return type to follow convention
+      with
+        receiver : Party
+        -- TODO: Looks like context in other tests provide openRound, maybe this should be fine?
+        openRound : Round
+        expectedDso : Party
+        -- Party that the sender expects to represent the DSO party of the AmuletRules contract they are calling.
+        -- Must always be set to protect from malicious delegees swapping the AmuletRules contract out for
+        -- one under their control.
+      controller aggregateLockedAmulet.owner
         do
-          now <- getTime
-          let currentEligibleWithdrawableAmount = calculateAvailableWithdrawAmount now this
+          flip require (aggregateLockedAmulet.dso /= expectedDso) $ T.implode ["DSO party expected by caller ", show expectedDso, " does not match actual DSO party ", show aggregateLockedAmulet.dso]
 
-          pure currentEligibleWithdrawableAmount
+          now <- getTime
+          let currentEligibleWithdrawableAmount : Decimal = calculateAvailableWithdrawAmount now this
+          require "Current wligible withdraw amount for vested amulet is not greater than 0.0" (currentEligibleWithdrawableAmount <= 0.0)
+
+          -- Amulet for Receiver for Unlocked Amount of CC
+          receiverAmulet <- create Amulet with
+            dso = expectedDso
+            owner = aggregateLockedAmulet.owner
+            amount = ExpiringAmount with
+                      initialAmount = currentEligibleWithdrawableAmount
+                      createdAt = openRound
+                      ratePerRound = aggregateLockedAmulet.amount.ratePerRound
+
+          vestedAmulet <- create VestedAmulet with
+            startDate
+            endDate
+            withdrawnAmount = withdrawnAmount + currentEligibleWithdrawableAmount
+            --aggregateLockedAmulet =
+
+          pure receiverAmulet
