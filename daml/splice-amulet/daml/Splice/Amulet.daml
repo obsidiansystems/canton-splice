@@ -121,6 +121,15 @@ data DevelopmentFundCoupon_RejectResult = DevelopmentFundCoupon_RejectResult wit
 data DevelopmentFundCoupon_DsoExpireResult = DevelopmentFundCoupon_DsoExpireResult with
   unclaimedDevelopmentFundCouponCid : ContractId UnclaimedDevelopmentFundCoupon
 
+data VestedAmulet_WithdrawResult
+  = VestedAmulet_WithdrawResult
+  with
+    receiverAmulet : ContractId Amulet -- ^ References new amulet created from the vested
+      -- amulet's unlocked withdrawn amount, with the owner being the receiver passed in.
+    vestedAmulet : Optional (ContractId VestedAmulet) -- ^ Optional reference to the vested amulet if any
+      -- locked aggregate amount remains. None if all of the amount is has already been withdrawn.
+  deriving (Show, Eq)
+
 -- | A amulet, which can be locked and whose amount expires over time.
 --
 -- The expiry serves to charge an inactivity fee, and thereby ensures that the
@@ -701,7 +710,7 @@ template VestedAmulet
   where
     signatory aggregateLockedAmulet.dso, aggregateLockedAmulet.owner
 
-    choice VestedAmulet_WithdrawAvailableUnlockedAmulet : (Amulet) -- TODO: Make custom return type to follow convention
+    choice VestedAmulet_WithdrawAvailableUnlockedAmulet : VestedAmulet_WithdrawResult
       with
         receiver : Party
         -- TODO: Looks like context in other tests provide openRound, maybe this should be fine?
@@ -716,21 +725,31 @@ template VestedAmulet
 
           now <- getTime
           let currentEligibleWithdrawableAmount : Decimal = calculateAvailableWithdrawAmount now this
-          require "Current wligible withdraw amount for vested amulet is not greater than 0.0" (currentEligibleWithdrawableAmount <= 0.0)
+          require "Current eligible withdraw amount for vested amulet is not greater than 0.0" (currentEligibleWithdrawableAmount <= 0.0)
 
           -- Amulet for Receiver for Unlocked Amount of CC
           receiverAmulet <- create Amulet with
             dso = expectedDso
-            owner = aggregateLockedAmulet.owner
+            owner = receiver
             amount = ExpiringAmount with
                       initialAmount = currentEligibleWithdrawableAmount
                       createdAt = openRound
                       ratePerRound = aggregateLockedAmulet.amount.ratePerRound
 
-          vestedAmulet <- create VestedAmulet with
-            startDate
-            endDate
-            withdrawnAmount = withdrawnAmount + currentEligibleWithdrawableAmount
-            --aggregateLockedAmulet =
+          let remainingAggregateLockedAmount = aggregateLockedAmulet.amount.initialAmount - currentEligibleWithdrawableAmount
 
-          pure receiverAmulet
+          vestedAmulet <- if remainingAggregateLockedAmount > 0.0 then do
+              Some <$> create VestedAmulet with
+                startDate
+                endDate
+                withdrawnAmount = withdrawnAmount + currentEligibleWithdrawableAmount
+                aggregateLockedAmulet = Amulet with
+                  dso = expectedDso
+                  owner = aggregateLockedAmulet.owner
+                  amount = ExpiringAmount with
+                            initialAmount = remainingAggregateLockedAmount
+                            createdAt = openRound
+                            ratePerRound = aggregateLockedAmulet.amount.ratePerRound
+            else return None
+
+          return $ VestedAmulet_WithdrawResult receiverAmulet vestedAmulet
