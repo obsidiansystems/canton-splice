@@ -11,6 +11,7 @@ import Splice.Amulet.TokenApiUtils
 import Splice.AmuletRules
 import Splice.Expiry
 import Splice.Scripts.Util
+import Splice.Fees (ExpiringAmount(..))
 
 testLocking : Script ()
 testLocking = do
@@ -68,6 +69,30 @@ testVesting = do
   DefaultAppWithUsers{..} <- setupDefaultAppWithUsers
   now <- getTime
 
-  amuletCid <- tap app alice 3652.5
+  amuletCid <- tap app alice 5000.0
+  Some(amulet) <- queryContractId @Amulet alice.primaryParty amuletCid
+  (_, openRound) <- getLatestOpenRound app
+
+  vestedAmuletCid <- submit (actAs alice.primaryParty <> actAs app.dso) $
+    createCmd VestedAmulet with
+      startDate = now
+      endDate = addRelTime now $ (days 365) + (hours 6)
+      withdrawnAmount = 0.0
+--      aggregateLockedAmulet = amulet
+      aggregateLockedAmulet = Amulet with
+        dso = app.dso
+        owner = alice.primaryParty
+        amount = ExpiringAmount with
+                  initialAmount = 3652.5
+                  createdAt = openRound.round
+                  ratePerRound = openRound.transferConfigUsd.holdingFee
+
+--  passTime (days 10)
+
+  vestedWithdrawResult <- submit (actAs alice.primaryParty) $ -- <> actAs app.dso) $
+    exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      receiver = alice.primaryParty
+      openRound = openRound.round
+      expectedDso = app.dso
 
   pure ()
