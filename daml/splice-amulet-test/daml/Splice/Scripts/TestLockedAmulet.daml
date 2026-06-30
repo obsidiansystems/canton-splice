@@ -87,7 +87,7 @@ testVesting = do
                   createdAt = openRound.round
                   ratePerRound = openRound.transferConfigUsd.holdingFee
 
---  passTime (days 10)
+  passTime (days 10)
 
   vestedWithdrawResult <- submit (actAs alice.primaryParty) $ -- <> actAs app.dso) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with

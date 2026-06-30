@@ -690,16 +690,16 @@ instance HasCheckedFetch DevelopmentFundCoupon ForOwner where
 instance HasCheckedFetch DevelopmentFundCoupon ForDso where
   contractGroupId DevelopmentFundCoupon{..} = ForDso with dso
 
---calculateAvailableWithdrawAmount : Time -> VestedAmulet -> Decimal
---calculateAvailableWithdrawAmount currentDateTime VestedAmulet{..} = let
---    totalVestedAmulet : Numeric 37 = castAndRound $ aggregateLockedAmulet.amount.initialAmount + withdrawnAmount
---  in if currentDateTime >= endDate
---  then (castAndRound totalVestedAmulet) - withdrawnAmount
---  else
---    let totalUnlockPeriod : Numeric 0 = intToNumeric . convertRelTimeToMicroseconds $ subTime endDate startDate
---        unlockPeriodElapsed : Numeric 0 = intToNumeric . convertRelTimeToMicroseconds $ subTime currentDateTime startDate
---        totalVestedPercentageElapsed : Numeric 37 = max 1.0 $ div unlockPeriodElapsed totalUnlockPeriod
---    in (castAndRound $ totalVestedAmulet * totalVestedPercentageElapsed) - withdrawnAmount
+calculateAvailableWithdrawAmount : Time -> VestedAmulet -> Decimal
+calculateAvailableWithdrawAmount currentDateTime VestedAmulet{..} = let
+  totalVestedAmulet : Decimal = castAndRound $ aggregateLockedAmulet.amount.initialAmount + withdrawnAmount
+  in if currentDateTime >= endDate
+  then (castAndRound totalVestedAmulet) - withdrawnAmount
+  else
+    let totalUnlockPeriod = intToDecimal . convertRelTimeToMicroseconds $ subTime endDate startDate
+        unlockPeriodElapsed = intToDecimal . convertRelTimeToMicroseconds $ subTime currentDateTime startDate
+        totalVestedPercentageElapsed : Decimal = div unlockPeriodElapsed totalUnlockPeriod
+    in (castAndRound $ totalVestedAmulet * totalVestedPercentageElapsed) - withdrawnAmount
 
 template VestedAmulet
   with
@@ -730,9 +730,8 @@ template VestedAmulet
               ]
 
           now <- getTime
-          -- TODO: the function below is giving some troubles during testing for some reason
---          let currentEligibleWithdrawableAmount : Decimal = calculateAvailableWithdrawAmount now this
-          let currentEligibleWithdrawableAmount : Decimal = 10.0
+          let currentEligibleWithdrawableAmount : Decimal = calculateAvailableWithdrawAmount now this
+
           require ("Current eligible withdraw amount for vested amulet is not greater than 0.0. "
                   <> "currentEligibleWithdrawableAmount came back = '"
                   <> show currentEligibleWithdrawableAmount
