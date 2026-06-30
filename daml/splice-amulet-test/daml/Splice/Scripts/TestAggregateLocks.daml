@@ -1,0 +1,133 @@
+{-# LANGUAGE ApplicativeDo #-}
+module Splice.Scripts.TestAggregateLocks where
+
+import DA.Time
+import Daml.Script
+import Splice.Amulet
+import Splice.AggregateLock
+import Splice.AmuletRules
+import Splice.Expiry
+import Splice.Scripts.Util
+
+import DA.Assert
+import DA.Optional
+import DA.Functor
+import DA.Foldable (mapA_, sequence_)
+import qualified DA.Map as M
+
+
+testAggregateLocks : Script ()
+testAggregateLocks = do
+  DefaultAppWithUsers{..} <- setupDefaultAppWithUsers
+  amuletCid <- tap app alice 1000.0
+  amuletCid2 <- tap app bob 1000.0
+  now <- getTime
+  
+  aggLock <- submit (actAs [alice.primaryParty, app.dso]) $ createCmd AggregateLock with
+    dso = app.dso
+    key = AggregateLockKey $ alice.primaryParty
+    vestingSchedule = None
+
+  aggTotal <- submit app.dso $ createCmd AggregateTotal with
+    dso = app.dso
+    key = AggregateLockKey $ alice.primaryParty
+    totalAsOf = 0.0
+    asOfTime = now
+    asOfRound = 0
+    lowerBound = True
+    upperBound = True
+  
+  let getTotal = do
+        [(totalContractId, totalContract)] <- query @AggregateTotal alice.primaryParty
+        (,) totalContractId . fromSome <$> queryDisclosure app.dso totalContractId
+
+  offer <- submit (actAs alice.primaryParty) $ createCmd OpenDelegationOffer with
+    owner = alice.primaryParty
+    lock = aggLock
+    unlockControllerSets = [[alice.primaryParty]]
+    substituteControllerSets = [[alice.primaryParty]]
+
+  disclosedOfferAlice <- fromSome <$> queryDisclosure alice.primaryParty offer
+  disclosedLock <- fromSome <$> queryDisclosure alice.primaryParty aggLock
+  -- disclosedOfferBob <- fromSome <$> queryDisclosure bob.primaryParty offer
+
+  (AggregateLock_LockHoldingResult lockedAmulet) <- submit alice.primaryParty $ exerciseCmd offer OpenDelegationOffer_LockHolding with
+    holder = alice.primaryParty
+    holding = amuletCid
+
+  (AggregateLock_LockHoldingResult lockedAmulet2) <- submit (actAs [bob.primaryParty] <> discloseMany [disclosedOfferAlice, disclosedLock]) $ exerciseCmd offer OpenDelegationOffer_LockHolding with
+    holder = bob.primaryParty
+    holding = amuletCid2
+
+  (total, disclosedTotal) <- getTotal
+
+  debug ("total", total)
+
+  unlockedAmulet <- submit (actAs [bob.primaryParty, alice.primaryParty] <> discloseMany [disclosedLock, disclosedTotal]) $ exerciseCmd lockedAmulet2 AggregateLockedAmulet_Unlock with
+    amount = 500.0
+    authorizers = [ bob.primaryParty, alice.primaryParty ]
+    lock = aggLock
+    total
+
+  debug ("Unlocked", unlockedAmulet)
+
+  dsoAggregateAutomation app.dso 0
+  
+  onChainTotals <- query @AggregateTotal app.dso
+  debug ("On Chain Totals", onChainTotals)
+  
+  (total, disclosedTotal) <- getTotal
+  
+  let lockedAmulet3 = unlockedAmulet.locked
+  unlockedAmulet2 <- submit (actAs [bob.primaryParty, alice.primaryParty] <> discloseMany [disclosedLock, disclosedTotal]) $ exerciseCmd lockedAmulet3 AggregateLockedAmulet_Unlock with
+    amount = 250.0
+    authorizers = [ bob.primaryParty, alice.primaryParty ]
+    lock = aggLock
+    total
+  
+  [(_, onChainTotal)] <- query @AggregateTotal app.dso
+
+  assertEq False onChainTotal.lowerBound
+  assertEq 1500.0 onChainTotal.totalAsOf
+
+  dsoAggregateAutomation app.dso 1
+
+  [(_, onChainTotal)] <- query @AggregateTotal app.dso
+  assertEq 1250.0 onChainTotal.totalAsOf
+  assertEq True onChainTotal.lowerBound
+
+  pure ()
+
+
+-- dsoAggregateAutomation :: 
+dsoAggregateAutomation : Party -> Int -> Script ()
+dsoAggregateAutomation dso round = do
+  lockedHoldings <- query @AggregateLockedAmulet dso
+  let totals = M.fromListWithL (+) $ lockedHoldings <&> \(_, holding) ->
+        (holding.lockedTo, holding.amulet.amount.initialAmount)
+  onChainTotals <- query @AggregateTotal dso
+  let onChainTotalsMap : M.Map AggregateLockKey (Optional (ContractId AggregateTotal))
+      onChainTotalsMap = M.fromListWithL (\_ _ -> None) $ onChainTotals <&> \(contractId, total) ->
+        (total.key, Some contractId)
+
+  now <- getTime
+
+  let updateOneLock : AggregateLockKey -> Decimal -> Optional (ContractId AggregateTotal) -> Optional (Script ())
+      updateOneLock key total (Some oldTotalId) = Some $
+        submit (actAs dso) $ do
+          archiveCmd oldTotalId
+          createCmd AggregateTotal with
+            totalAsOf = total
+            asOfTime = now
+            asOfRound = round
+            lowerBound = True
+            upperBound = True
+            dso
+            key
+          pure ()
+      updateOneLock _ _ None = Some $ assertFail "Only one AggregateTotal per key is permitted"
+  let onChainUpdates = M.merge (\_ _ -> Some $ assertFail "Missing AggregateTotal") (\k -> updateOneLock k (0.0 : Decimal)) updateOneLock totals onChainTotalsMap
+
+  sequence_ onChainUpdates
+  
+  pure ()
