@@ -3,6 +3,8 @@
 
 module Splice.Scripts.TestLockedAmulet where
 
+import DA.Assert
+import DA.Optional
 import DA.Time
 import Daml.Script
 
@@ -64,35 +66,88 @@ testLocking = do
 
   pure ()
 
-testVesting : Script ()
-testVesting = do
+testVestingAmuletUnlock : Script ()
+testVestingAmuletUnlock = do
   DefaultAppWithUsers{..} <- setupDefaultAppWithUsers
   now <- getTime
 
-  amuletCid <- tap app alice 5000.0
+  amuletCid <- tap app alice 3652.5
   Some(amulet) <- queryContractId @Amulet alice.primaryParty amuletCid
   (_, openRound) <- getLatestOpenRound app
 
+  let initialVestedAmuletValues : VestedAmulet = VestedAmulet { aggregateLockedAmulet = amulet
+                                                              , startDate = now
+                                                              , endDate = (addRelTime now $ (days 365) + (hours 6))
+                                                              , withdrawnAmount = 0.0
+                                                              }
+
   vestedAmuletCid <- submit (actAs alice.primaryParty <> actAs app.dso) $
     createCmd VestedAmulet with
-      startDate = now
-      endDate = addRelTime now $ (days 365) + (hours 6)
-      withdrawnAmount = 0.0
---      aggregateLockedAmulet = amulet
-      aggregateLockedAmulet = Amulet with
-        dso = app.dso
-        owner = alice.primaryParty
-        amount = ExpiringAmount with
-                  initialAmount = 3652.5
-                  createdAt = openRound.round
-                  ratePerRound = openRound.transferConfigUsd.holdingFee
+      aggregateLockedAmulet = initialVestedAmuletValues.aggregateLockedAmulet
+      startDate = initialVestedAmuletValues.startDate
+      endDate = initialVestedAmuletValues.endDate
+      withdrawnAmount = initialVestedAmuletValues.withdrawnAmount
 
-  passTime (days 10)
-
-  vestedWithdrawResult <- submit (actAs alice.primaryParty) $ -- <> actAs app.dso) $
+  -- Immediate withdraw attempt causes transaction to fail due to the current
+  -- eligible withdraw amount being zero (no time has passed since locking yet)
+  submitMustFail (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
       receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
+  let totalTimePassed = days 10
+  passTime totalTimePassed
+
+  vestedWithdrawResult <- submit (actAs alice.primaryParty) $
+    exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      receiver = alice.primaryParty
+      openRound = openRound.round
+      expectedDso = app.dso
+
+  let vestedAmuletCid' = fromSome $ mVestedAmuletCid vestedWithdrawResult
+  receiverAmulet <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult)
+  vestedAmulet <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid'
+
+  updatedNow <- getTime
+  let availableAmount = calculateAvailableWithdrawAmount updatedNow initialVestedAmuletValues
+
+  assertEq receiverAmulet.amount.initialAmount availableAmount
+  assertEq vestedAmulet.aggregateLockedAmulet.amount.initialAmount $
+    initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount - availableAmount
+
+  -- Try withdraw again, right after previous withdraw (should fail)
+  submitMustFail (actAs alice.primaryParty) $
+    exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      receiver = alice.primaryParty
+      openRound = openRound.round
+      expectedDso = app.dso
+
+  -- Let's try to withdraw right before the full amount is available
+  passTime ((days 365 + hours 5 + minutes 59  + seconds 59 + milliseconds 59 + microseconds 59) - totalTimePassed)
+
+  vestedWithdrawResult' <- submit (actAs alice.primaryParty) $
+    exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      receiver = alice.primaryParty
+      openRound = openRound.round
+      expectedDso = app.dso
+
+  -- TODO: prob throw this in a function once it looks better
+  let vestedAmuletCid'' = fromSome $ mVestedAmuletCid vestedWithdrawResult'
+  receiverAmulet' <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult')
+  vestedAmulet' <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid''
+
+  updatedNow <- getTime
+  let availableAmount' = calculateAvailableWithdrawAmount updatedNow initialVestedAmuletValues
+
+  assertEq receiverAmulet'.amount.initialAmount availableAmount'
+  assertEq vestedAmulet'.aggregateLockedAmulet.amount.initialAmount $
+    initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount - availableAmount
+
+  debug receiverAmulet'
+  debug vestedAmulet'
+  debug "lol"
+  debug vestedWithdrawResult
+  debug "lul2"
+  assertBeforeMsg "8ooof" (addRelTime now $ days 1)
   pure ()

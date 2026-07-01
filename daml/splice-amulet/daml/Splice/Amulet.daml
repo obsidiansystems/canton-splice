@@ -124,9 +124,9 @@ data DevelopmentFundCoupon_DsoExpireResult = DevelopmentFundCoupon_DsoExpireResu
 data VestedAmulet_WithdrawResult
   = VestedAmulet_WithdrawResult
   with
-    receiverAmulet : ContractId Amulet -- ^ References new amulet created from the vested
+    receiverAmuletCid : ContractId Amulet -- ^ References new amulet created from the vested
       -- amulet's unlocked withdrawn amount, with the owner being the receiver passed in.
-    vestedAmulet : Optional (ContractId VestedAmulet) -- ^ Optional reference to the vested amulet if any
+    mVestedAmuletCid : Optional (ContractId VestedAmulet) -- ^ Optional reference to the vested amulet if any
       -- locked aggregate amount remains. None if all of the amount is has already been withdrawn.
   deriving (Show, Eq)
 
@@ -713,7 +713,6 @@ template VestedAmulet
     choice VestedAmulet_WithdrawAvailableUnlockedAmulet : VestedAmulet_WithdrawResult
       with
         receiver : Party
-        -- TODO: Looks like context in other tests provide openRound, maybe this should be fine?
         openRound : Round
         expectedDso : Party
         -- Party that the sender expects to represent the DSO party of the AmuletRules contract they are calling.
@@ -750,6 +749,7 @@ template VestedAmulet
 
           let remainingAggregateLockedAmount = aggregateLockedAmulet.amount.initialAmount - currentEligibleWithdrawableAmount
 
+          -- Vested Amulet in case any amount remains locked in aggregateLockedAmulet
           vestedAmulet <- if remainingAggregateLockedAmount > 0.0 then do
               Some <$> create VestedAmulet with
                 startDate
