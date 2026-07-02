@@ -124,7 +124,7 @@ testVestingAmuletUnlock = do
       expectedDso = app.dso
 
   -- Let's try to withdraw right before the full amount is available
-  passTime ((days 365 + hours 5 + minutes 59  + seconds 59 + milliseconds 59 + microseconds 59) - totalTimePassed)
+  passTime ((days 364 + hours 5 + minutes 59  + seconds 59 + milliseconds 59 + microseconds 59) - totalTimePassed)
 
   vestedWithdrawResult' <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
@@ -132,22 +132,41 @@ testVestingAmuletUnlock = do
       openRound = openRound.round
       expectedDso = app.dso
 
-  -- TODO: prob throw this in a function once it looks better
   let vestedAmuletCid'' = fromSome $ mVestedAmuletCid vestedWithdrawResult'
   receiverAmulet' <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult')
   vestedAmulet' <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid''
 
   updatedNow <- getTime
-  let availableAmount' = calculateAvailableWithdrawAmount updatedNow initialVestedAmuletValues
+  let availableAmount' = calculateAvailableWithdrawAmount updatedNow vestedAmulet
 
+  -- Receiver amulet and vested amulet should both mathing right
   assertEq receiverAmulet'.amount.initialAmount availableAmount'
   assertEq vestedAmulet'.aggregateLockedAmulet.amount.initialAmount $
-    initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount - availableAmount
+    vestedAmulet.aggregateLockedAmulet.amount.initialAmount - availableAmount'
 
-  debug receiverAmulet'
-  debug vestedAmulet'
-  debug "lol"
-  debug vestedWithdrawResult
-  debug "lul2"
-  assertBeforeMsg "8ooof" (addRelTime now $ days 1)
+  -- Now try to withdraw after the endDate has passed (the full should be withdrawable)
+  passTime (days 10)
+
+  vestedWithdrawResult'' <- submit (actAs alice.primaryParty) $
+    exerciseCmd vestedAmuletCid'' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      receiver = alice.primaryParty
+      openRound = openRound.round
+      expectedDso = app.dso
+
+  let mVestedAmulet = mVestedAmuletCid vestedWithdrawResult''
+  receiverAmulet'' <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult'')
+
+  updatedNow' <- getTime
+  let availableAmount'' = calculateAvailableWithdrawAmount updatedNow' vestedAmulet'
+
+  -- Receiver amulet should receive last bit, while there should be no more vestedAmulet
+  assertEq receiverAmulet''.amount.initialAmount availableAmount''
+  assertEq mVestedAmulet None
+
+  -- Make sure all receiving Amulets match up to original Amulet values
+  assertEq initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount $
+     receiverAmulet.amount.initialAmount
+     + receiverAmulet'.amount.initialAmount
+     + receiverAmulet''.amount.initialAmount
+
   pure ()
