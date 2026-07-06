@@ -712,13 +712,14 @@ template VestedAmulet
 
     choice VestedAmulet_WithdrawAvailableUnlockedAmulet : VestedAmulet_WithdrawResult
       with
+        authorizers : [Party]
         receiver : Party
         openRound : Round
         expectedDso : Party
         -- Party that the sender expects to represent the DSO party of the AmuletRules contract they are calling.
         -- Must always be set to protect from malicious delegees swapping the AmuletRules contract out for
         -- one under their control.
-      controller aggregateLockedAmulet.owner
+      controller authorizers
         do
           flip require ((show aggregateLockedAmulet.dso) == (show expectedDso)) $
             T.implode [

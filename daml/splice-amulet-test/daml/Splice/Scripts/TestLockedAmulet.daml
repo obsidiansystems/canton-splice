@@ -92,6 +92,7 @@ testVestingAmuletUnlock = do
   -- eligible withdraw amount being zero (no time has passed since locking yet)
   submitMustFail (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      authorizers = [alice.primaryParty]
       receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
@@ -99,14 +100,15 @@ testVestingAmuletUnlock = do
   let totalTimePassed = days 10
   passTime totalTimePassed
 
-  vestedWithdrawResult <- submit (actAs alice.primaryParty) $
+  vestedWithdrawResult <- submit (actAs alice.primaryParty <> actAs bob.primaryParty) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      receiver = alice.primaryParty
+      authorizers = [alice.primaryParty, bob.primaryParty]
+      receiver = bob.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
   let vestedAmuletCid' = fromSome $ mVestedAmuletCid vestedWithdrawResult
-  receiverAmulet <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult)
+  receiverAmulet <- fromSome <$> queryContractId bob.primaryParty (receiverAmuletCid vestedWithdrawResult)
   vestedAmulet <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid'
 
   updatedNow <- getTime
@@ -119,6 +121,7 @@ testVestingAmuletUnlock = do
   -- Try withdraw again, right after previous withdraw (should fail)
   submitMustFail (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      authorizers = [alice.primaryParty]
       receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
@@ -128,6 +131,7 @@ testVestingAmuletUnlock = do
 
   vestedWithdrawResult' <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      authorizers = [alice.primaryParty]
       receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
@@ -149,6 +153,7 @@ testVestingAmuletUnlock = do
 
   vestedWithdrawResult'' <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid'' VestedAmulet_WithdrawAvailableUnlockedAmulet with
+      authorizers = [alice.primaryParty]
       receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
