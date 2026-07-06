@@ -1,0 +1,205 @@
+module Splice.AggregateLock where
+
+import Splice.Amulet
+import DA.Time
+import DA.Action
+import DA.Foldable (forA_)
+
+
+data AggregateLockKey = AggregateLockKey with
+  owner : Party
+    deriving (Eq, Show, Ord)
+
+data VestingSchedule = VestingSchedule with
+  period : RelTime -- check this type.
+    deriving (Eq, Show)
+
+type ControllerSets = [[Party]]
+
+template AggregateLock
+  with
+    dso : Party
+    key : AggregateLockKey
+    vestingSchedule : Optional VestingSchedule
+  where
+    signatory key.owner, dso
+    nonconsuming choice AggregateLock_LockHolding : AggregateLock_LockHoldingResult
+      with
+        holder : Party
+        holding : ContractId Amulet
+        unlockControllerSets : ControllerSets
+        substituteControllerSets : ControllerSets
+      controller key.owner, holder
+      do
+        holdingContract <- fetch holding
+        archive holding
+        AggregateLock_LockHoldingResult <$> create AggregateLockedAmulet with
+          amulet = holdingContract
+          lockedTo = key
+          unlockControllerSets
+          substituteControllerSets
+
+    choice AggregateLock_AllowImmediateUnlocks : AggregateLock_AllowImmediateUnlocksResult
+      controller dso
+      do
+        AggregateLock_AllowImmediateUnlocksResult <$> create this with
+          vestingSchedule = None
+
+data AggregateLock_LockHoldingResult = AggregateLock_LockHoldingResult (ContractId AggregateLockedAmulet)
+data AggregateLock_AllowImmediateUnlocksResult = AggregateLock_AllowImmediateUnlocksResult (ContractId AggregateLock)
+
+data AggregateLockedAmulet_UnlockResult
+  = AggregateLockedAmulet_UnlockResult_Vesting with
+      vesting : ContractId VestingLockedAmulet
+      locked : ContractId AggregateLockedAmulet
+  | AggregateLockedAmulet_UnlockResult_Immediate with
+      unlocked : ContractId Amulet
+      locked : ContractId AggregateLockedAmulet
+  deriving (Show)
+
+
+template AggregateLockedAmulet
+  with
+    amulet : Amulet
+    lockedTo : AggregateLockKey
+    unlockControllerSets : ControllerSets
+    substituteControllerSets : ControllerSets
+  where
+    signatory amulet.dso, amulet.owner
+  
+    choice AggregateLockedAmulet_Unlock : AggregateLockedAmulet_UnlockResult
+      with
+        amount : Decimal
+        authorizers : [Party]
+        lock : ContractId AggregateLock
+        total : ContractId AggregateTotal
+      controller authorizers
+      do
+        assert $ authorizers `elem` unlockControllerSets
+        
+        let remainder = amulet.amount.initialAmount - amount -- FIXME: do something about expiring amulet.
+        lockParameters <- fetch lock
+        now <- getTime
+        totalContract <- fetch total
+        if totalContract.lowerBound
+           then do
+             create totalContract with
+               lowerBound = False
+             archive total
+           else return ()
+        case lockParameters.vestingSchedule of
+          Some schedule -> do
+            vested <- create VestingLockedAmulet with
+              start = now
+              period = schedule.period
+              amulet = amulet with
+                amount = amulet.amount with
+                  initialAmount = amount
+            locked <- create this with
+              amulet = amulet with
+                amount = amulet.amount with
+                  initialAmount = remainder
+            return $ AggregateLockedAmulet_UnlockResult_Vesting vested locked
+          None -> do
+            unlocked <- create this.amulet with
+              amount = this.amulet.amount with
+                initialAmount = amount
+            locked <- create this with
+              amulet = amulet with
+                amount = amulet.amount with
+                  initialAmount = remainder
+            return $ AggregateLockedAmulet_UnlockResult_Immediate unlocked locked
+
+template VestingLockedAmulet with
+    start : Time
+    period : RelTime
+    amulet : Amulet
+  where
+    signatory amulet.dso
+
+{- 
+  choice AggregateLockedAmulet_Substitute : AggregateLockedAmulet_Substitute
+    with
+      amount : Decimal authorizers : [Party]
+      lock : ContractId AggregateLock
+      swapWith : Amulet
+      newUnlockControllerSets : ControllerSets
+      newSubstituteControllerSets : ControllerSets
+    controller swapWith.owner :: authorizers
+    do
+      assert $ authorizers `elem` substituteControllerSets
+      let remainder = amulet.amount. - amount
+      unlocked <- create Amulet with
+        
+
+
+        Nothing -> do
+          unlocked <- create Amulet with
+            amount = amulet.amount with
+              initialAmount = amount
+          locked <- create this with
+            amulet = amulet with
+              amount = amulet.amount with
+                initialAmount = remainder
+          return AggregateLockedAmulet_UnlockResult_Immediate unlocked amount
+-}
+
+template AggregateTotal
+  with
+    dso : Party
+    key : AggregateLockKey
+    totalAsOf : Decimal
+    asOfTime : Time
+    asOfRound : Int
+    lowerBound : Bool
+    upperBound : Bool
+  where
+    signatory dso
+    observer key.owner
+
+template AggregateLockDsoAutomation
+  with
+    dso : Party
+  where
+    signatory dso
+    nonconsuming choice AggregateLockDsoAutomation_UpdateHolderTotal : AggregateLockDsoAutomation_UpdateHolderTotalResult
+      with
+        key : AggregateLockKey
+        asOfRound : Int
+        holdings : [ AggregateLockedAmulet ]
+      controller dso
+      do
+        forA_ holdings $ \a ->
+          assert $ a.lockedTo == key
+        let totalAsOf = foldl (\t h -> t + h.amulet.amount.initialAmount) 0.0 holdings -- FIXME: use correct amount calculation.
+        asOfTime <- getTime
+        create AggregateTotal with
+          lowerBound = True
+          upperBound = True
+          ..
+        pure AggregateLockDsoAutomation_UpdateHolderTotalResult
+
+data AggregateLockDsoAutomation_UpdateHolderTotalResult = AggregateLockDsoAutomation_UpdateHolderTotalResult
+
+template OpenDelegationOffer
+  with
+    owner : Party
+    lock : ContractId AggregateLock
+    unlockControllerSets : ControllerSets
+    substituteControllerSets : ControllerSets
+  where
+    signatory owner
+
+    nonconsuming choice OpenDelegationOffer_LockHolding : AggregateLock_LockHoldingResult
+      with
+        holder : Party
+        holding : ContractId Amulet
+      controller holder
+      do
+        holdingAmulet <- fetch holding
+        assert $ holder == holdingAmulet.owner
+        exercise lock AggregateLock_LockHolding with
+          unlockControllerSets = (::) holder <$> unlockControllerSets
+          substituteControllerSets = (::) holder <$> substituteControllerSets
+          ..
+
