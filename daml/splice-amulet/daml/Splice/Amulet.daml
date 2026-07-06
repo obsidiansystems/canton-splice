@@ -124,8 +124,8 @@ data DevelopmentFundCoupon_DsoExpireResult = DevelopmentFundCoupon_DsoExpireResu
 data VestedAmulet_WithdrawResult
   = VestedAmulet_WithdrawResult
   with
-    receiverAmuletCid : ContractId Amulet -- ^ References new amulet created from the vested
-      -- amulet's unlocked withdrawn amount, with the owner being the receiver passed in.
+    unlockedAmuletCid : ContractId Amulet -- ^ References new amulet created from the vested
+      -- amulet's unlocked withdrawn amount.
     mVestedAmuletCid : Optional (ContractId VestedAmulet) -- ^ Optional reference to the vested amulet if any
       -- locked aggregate amount remains. None if all of the amount is has already been withdrawn.
   deriving (Show, Eq)
@@ -712,14 +712,12 @@ template VestedAmulet
 
     choice VestedAmulet_WithdrawAvailableUnlockedAmulet : VestedAmulet_WithdrawResult
       with
-        authorizers : [Party]
-        receiver : Party
         openRound : Round
         expectedDso : Party
         -- Party that the sender expects to represent the DSO party of the AmuletRules contract they are calling.
         -- Must always be set to protect from malicious delegees swapping the AmuletRules contract out for
         -- one under their control.
-      controller authorizers
+      controller aggregateLockedAmulet.owner
         do
           flip require ((show aggregateLockedAmulet.dso) == (show expectedDso)) $
             T.implode [
@@ -739,10 +737,10 @@ template VestedAmulet
                   )
             (currentEligibleWithdrawableAmount > 0.0)
 
-          -- Amulet for Receiver for Unlocked Amount of CC
-          receiverAmulet <- create Amulet with
+          -- Amulet for Unlocked Amount of CC
+          unlockedAmulet <- create Amulet with
             dso = expectedDso
-            owner = receiver
+            owner = aggregateLockedAmulet.owner
             amount = ExpiringAmount with
                       initialAmount = currentEligibleWithdrawableAmount
                       createdAt = openRound
@@ -765,4 +763,4 @@ template VestedAmulet
                             ratePerRound = aggregateLockedAmulet.amount.ratePerRound
             else return None
 
-          return $ VestedAmulet_WithdrawResult receiverAmulet vestedAmulet
+          return $ VestedAmulet_WithdrawResult unlockedAmulet vestedAmulet

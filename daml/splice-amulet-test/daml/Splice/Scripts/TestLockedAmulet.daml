@@ -92,37 +92,31 @@ testVestingAmuletUnlock = do
   -- eligible withdraw amount being zero (no time has passed since locking yet)
   submitMustFail (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      authorizers = [alice.primaryParty]
-      receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
   let totalTimePassed = days 10
   passTime totalTimePassed
 
-  vestedWithdrawResult <- submit (actAs alice.primaryParty <> actAs bob.primaryParty) $
+  vestedWithdrawResult <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      authorizers = [alice.primaryParty, bob.primaryParty]
-      receiver = bob.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
   let vestedAmuletCid' = fromSome $ mVestedAmuletCid vestedWithdrawResult
-  receiverAmulet <- fromSome <$> queryContractId bob.primaryParty (receiverAmuletCid vestedWithdrawResult)
+  unlockedAmulet <- fromSome <$> queryContractId alice.primaryParty (unlockedAmuletCid vestedWithdrawResult)
   vestedAmulet <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid'
 
   updatedNow <- getTime
   let availableAmount = calculateAvailableWithdrawAmount updatedNow initialVestedAmuletValues
 
-  assertEq receiverAmulet.amount.initialAmount availableAmount
+  assertEq unlockedAmulet.amount.initialAmount availableAmount
   assertEq vestedAmulet.aggregateLockedAmulet.amount.initialAmount $
     initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount - availableAmount
 
   -- Try withdraw again, right after previous withdraw (should fail)
   submitMustFail (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      authorizers = [alice.primaryParty]
-      receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
@@ -131,20 +125,18 @@ testVestingAmuletUnlock = do
 
   vestedWithdrawResult' <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid' VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      authorizers = [alice.primaryParty]
-      receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
   let vestedAmuletCid'' = fromSome $ mVestedAmuletCid vestedWithdrawResult'
-  receiverAmulet' <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult')
+  unlockedAmulet' <- fromSome <$> queryContractId alice.primaryParty (unlockedAmuletCid vestedWithdrawResult')
   vestedAmulet' <- fromSome <$> queryContractId alice.primaryParty vestedAmuletCid''
 
   updatedNow <- getTime
   let availableAmount' = calculateAvailableWithdrawAmount updatedNow vestedAmulet
 
-  -- Receiver amulet and vested amulet should both mathing right
-  assertEq receiverAmulet'.amount.initialAmount availableAmount'
+  -- Unlocked amulet and vested amulet should both mathing right
+  assertEq unlockedAmulet'.amount.initialAmount availableAmount'
   assertEq vestedAmulet'.aggregateLockedAmulet.amount.initialAmount $
     vestedAmulet.aggregateLockedAmulet.amount.initialAmount - availableAmount'
 
@@ -153,25 +145,23 @@ testVestingAmuletUnlock = do
 
   vestedWithdrawResult'' <- submit (actAs alice.primaryParty) $
     exerciseCmd vestedAmuletCid'' VestedAmulet_WithdrawAvailableUnlockedAmulet with
-      authorizers = [alice.primaryParty]
-      receiver = alice.primaryParty
       openRound = openRound.round
       expectedDso = app.dso
 
   let mVestedAmulet = mVestedAmuletCid vestedWithdrawResult''
-  receiverAmulet'' <- fromSome <$> queryContractId alice.primaryParty (receiverAmuletCid vestedWithdrawResult'')
+  unlockedAmulet'' <- fromSome <$> queryContractId alice.primaryParty (unlockedAmuletCid vestedWithdrawResult'')
 
   updatedNow' <- getTime
   let availableAmount'' = calculateAvailableWithdrawAmount updatedNow' vestedAmulet'
 
-  -- Receiver amulet should receive last bit, while there should be no more vestedAmulet
-  assertEq receiverAmulet''.amount.initialAmount availableAmount''
+  -- Unlocked amulet should receive last bit, while there should be no more vestedAmulet
+  assertEq unlockedAmulet''.amount.initialAmount availableAmount''
   assertEq mVestedAmulet None
 
   -- Make sure all receiving Amulets match up to original Amulet values
   assertEq initialVestedAmuletValues.aggregateLockedAmulet.amount.initialAmount $
-     receiverAmulet.amount.initialAmount
-     + receiverAmulet'.amount.initialAmount
-     + receiverAmulet''.amount.initialAmount
+     unlockedAmulet.amount.initialAmount
+     + unlockedAmulet'.amount.initialAmount
+     + unlockedAmulet''.amount.initialAmount
 
   pure ()
