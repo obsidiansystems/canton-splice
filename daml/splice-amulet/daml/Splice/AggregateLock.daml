@@ -50,7 +50,7 @@ data AggregateLock_AllowImmediateUnlocksResult = AggregateLock_AllowImmediateUnl
 
 data AggregateLockedAmulet_UnlockResult
   = AggregateLockedAmulet_UnlockResult_Vesting with
-      vesting : ContractId VestingLockedAmulet
+      vesting : ContractId VestedAmulet
       locked : ContractId AggregateLockedAmulet
   | AggregateLockedAmulet_UnlockResult_Immediate with
       unlocked : ContractId Amulet
@@ -89,12 +89,13 @@ template AggregateLockedAmulet
            else return ()
         case lockParameters.vestingSchedule of
           Some schedule -> do
-            vested <- create VestingLockedAmulet with
-              start = now
-              period = schedule.period
-              amulet = amulet with
+            vested <- create VestedAmulet with
+              startDate = now
+              endDate = addRelTime now schedule.period
+              aggregateLockedAmulet = amulet with
                 amount = amulet.amount with
                   initialAmount = amount
+              withdrawnAmount = 0.0
             locked <- create this with
               amulet = amulet with
                 amount = amulet.amount with
@@ -109,13 +110,6 @@ template AggregateLockedAmulet
                 amount = amulet.amount with
                   initialAmount = remainder
             return $ AggregateLockedAmulet_UnlockResult_Immediate unlocked locked
-
-template VestingLockedAmulet with
-    start : Time
-    period : RelTime
-    amulet : Amulet
-  where
-    signatory amulet.dso
 
 {- 
   choice AggregateLockedAmulet_Substitute : AggregateLockedAmulet_Substitute
