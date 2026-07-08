@@ -97,7 +97,8 @@ class UserWalletService(
     walletManager,
     retryProvider,
     scanConnection,
-    mintUnassignedRewardCouponsV2 = rewardSharingConfig.beneficiaries.isEmpty,
+    mintUnassignedRewardCouponsV2 =
+      rewardSharingConfig.beneficiaries.isEmpty && !rewardSharingConfig.isExternal,
     loggerFactory,
   )
 
