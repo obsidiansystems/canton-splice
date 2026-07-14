@@ -97,8 +97,10 @@ class UserWalletService(
     walletManager,
     retryProvider,
     scanConnection,
-    mintUnassignedRewardCouponsV2 =
-      rewardSharingConfig.beneficiaries.isEmpty && !rewardSharingConfig.isExternal,
+    mintUnassignedRewardCouponsV2 = rewardSharingConfig match {
+      case RewardSharingConfig.BuiltIn(_, beneficiaries, _) => beneficiaries.isEmpty
+      case RewardSharingConfig.External => false
+    },
     loggerFactory,
   )
 

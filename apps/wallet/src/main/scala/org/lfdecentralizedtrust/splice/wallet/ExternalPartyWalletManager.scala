@@ -174,7 +174,8 @@ class ExternalPartyWalletManager(
       params,
       scanConnection,
       packageVersionSupport,
-      rewardSharingConfigByParty.getOrElse(externalParty.toProtoPrimitive, RewardSharingConfig()),
+      rewardSharingConfigByParty
+        .getOrElse(externalParty.toProtoPrimitive, RewardSharingConfig.BuiltIn()),
     )
     (externalPartyRetryProvider, walletService)
   }
