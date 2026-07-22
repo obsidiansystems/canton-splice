@@ -7,3 +7,6 @@
 
 .. release-notes:: Upcoming
 
+    - SV app
+
+      - Add support for updating weight via ``UpdateFeaturedAppRight`` governance voting UI.
