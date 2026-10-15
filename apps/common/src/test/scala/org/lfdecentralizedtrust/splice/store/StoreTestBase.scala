@@ -545,6 +545,7 @@ abstract class StoreTestBase
       dso: PartyId = dsoParty,
       kind: governancelockCodegen.GovernanceLockKind =
         new governancelockCodegen.governancelockkind.GLK_SuperValidatorRightsOwner("sv1"),
+      vestingEndTime: Option[Instant] = None,
       contractId: String = nextCid(),
   ): Contract[
     governancelockCodegen.GovernanceLock.ContractId,
@@ -558,34 +559,17 @@ abstract class StoreTestBase
         owner.toProtoPrimitive,
         amount.bigDecimal,
         new LockedAmulet.ContractId(nextCid()),
-        new governancelockCodegen.GovernanceLockSpecification(kind),
+        vestingEndTime match {
+          case Some(endTime) =>
+            new governancelockCodegen.governancelockspecification.VestingLockSpecification(
+              kind,
+              new governancelockCodegen.VestingLockTimes(new RelTime(1_000_000), endTime),
+            )
+          case None =>
+            new governancelockCodegen.governancelockspecification.FullLockSpecification(kind)
+        },
         Optional.empty(),
         Instant.now().truncatedTo(ChronoUnit.MICROS),
-      ),
-    )
-
-  protected def vestingLock(
-      owner: PartyId,
-      vestingAmount: BigDecimal,
-      endTime: Instant,
-      dso: PartyId = dsoParty,
-      svName: String = "sv1",
-      contractId: String = nextCid(),
-  ): Contract[governancelockCodegen.VestingLock.ContractId, governancelockCodegen.VestingLock] =
-    contract(
-      identifier = governancelockCodegen.VestingLock.TEMPLATE_ID_WITH_PACKAGE_ID,
-      contractId = new governancelockCodegen.VestingLock.ContractId(contractId),
-      payload = new governancelockCodegen.VestingLock(
-        dso.toProtoPrimitive,
-        owner.toProtoPrimitive,
-        new LockedAmulet.ContractId(nextCid()),
-        new RelTime(1_000_000),
-        endTime,
-        vestingAmount.bigDecimal,
-        new governancelockCodegen.VestingLockSpecification(
-          new governancelockCodegen.governancelockkind.GLK_SuperValidatorRightsOwner(svName)
-        ),
-        Optional.empty(),
       ),
     )
 
